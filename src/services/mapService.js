@@ -22,6 +22,26 @@ export class MapService {
     return parsedKeys.amapApiKey
   }
 
+  // 获取安全密钥
+  getSecurityKeys() {
+    const apiKeys = localStorage.getItem('webplanner_api_keys')
+    if (!apiKeys) {
+      return null
+    }
+    
+    const parsedKeys = JSON.parse(apiKeys)
+    const securityKeys = []
+    
+    if (parsedKeys.amapSecurityKey1) {
+      securityKeys.push(parsedKeys.amapSecurityKey1)
+    }
+    if (parsedKeys.amapSecurityKey2) {
+      securityKeys.push(parsedKeys.amapSecurityKey2)
+    }
+    
+    return securityKeys.length > 0 ? securityKeys : null
+  }
+
   // 加载地图API
   async loadMapAPI() {
     console.group('🗺️ 地图服务 - API加载')

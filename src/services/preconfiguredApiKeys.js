@@ -2,6 +2,8 @@
 export const preconfiguredApiKeys = {
   llmApiKey: 'sk-674c20d824f942a59d7cb09426c0d33b', // DeepSeek API
   amapApiKey: '3b5d43530286cf341867ede674447365', // 高德地图API
+  amapSecurityKey1: 'e17e0e7b050e1e61b08787cff4efb300', // 高德地图安全密钥1
+  amapSecurityKey2: 'b8bbbd466a5d9a390df85290604d2430', // 高德地图安全密钥2
   xunfeiApiKey: '78b46e0bacff3d433ca3fa3e52fc3f56' // 科大讯飞API
 }
 

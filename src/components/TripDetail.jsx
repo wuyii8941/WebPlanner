@@ -291,7 +291,7 @@ const TripDetail = ({ trip, onEdit, onDelete, onBack }) => {
         )}
 
         {/* 旅行信息概览 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
           <div className="bg-white bg-opacity-20 rounded-lg p-3">
             <div className="text-sm text-blue-100">旅行日期</div>
             <div className="font-semibold">
@@ -307,6 +307,10 @@ const TripDetail = ({ trip, onEdit, onDelete, onBack }) => {
             <div className="font-semibold">
               {trip.budget ? `¥${trip.budget.toLocaleString()}` : '未设置'}
             </div>
+          </div>
+          <div className="bg-white bg-opacity-20 rounded-lg p-3">
+            <div className="text-sm text-blue-100">旅行人数</div>
+            <div className="font-semibold">{trip.travelers || 1} 人</div>
           </div>
           <div className="bg-white bg-opacity-20 rounded-lg p-3">
             <div className="text-sm text-blue-100">行程项</div>

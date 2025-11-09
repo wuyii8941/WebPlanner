@@ -7,6 +7,8 @@ const Settings = ({ onBack }) => {
   const navigate = useNavigate()
   const [apiKeys, setApiKeys] = useState({
     amapApiKey: '',
+    amapSecurityKey1: '',
+    amapSecurityKey2: '',
     llmApiKey: '',
     xunfeiApiKey: '',
     weatherApiKey: ''
@@ -199,6 +201,8 @@ const Settings = ({ onBack }) => {
       localStorage.removeItem('webplanner_api_keys')
       setApiKeys({
         amapApiKey: '',
+        amapSecurityKey1: '',
+        amapSecurityKey2: '',
         llmApiKey: '',
         xunfeiApiKey: '',
         weatherApiKey: ''
@@ -304,22 +308,60 @@ const Settings = ({ onBack }) => {
               <strong>获取方式：</strong>访问 <a href="https://lbs.amap.com/" target="_blank" rel="noopener noreferrer" className="underline">高德开放平台</a> 注册并创建应用
             </p>
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              高德地图 API Key
-            </label>
-            <input
-              type="password"
-              value={apiKeys.amapApiKey}
-              onChange={(e) => handleInputChange('amapApiKey', e.target.value)}
-              placeholder="请输入32位高德地图API Key"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.amapApiKey ? 'border-red-300' : 'border-gray-300'
-              }`}
-            />
-            {errors.amapApiKey && (
-              <p className="text-red-600 text-sm">{errors.amapApiKey}</p>
-            )}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                高德地图 API Key
+              </label>
+              <input
+                type="password"
+                value={apiKeys.amapApiKey}
+                onChange={(e) => handleInputChange('amapApiKey', e.target.value)}
+                placeholder="请输入32位高德地图API Key"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.amapApiKey ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {errors.amapApiKey && (
+                <p className="text-red-600 text-sm">{errors.amapApiKey}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                高德地图安全密钥 1
+              </label>
+              <input
+                type="password"
+                value={apiKeys.amapSecurityKey1}
+                onChange={(e) => handleInputChange('amapSecurityKey1', e.target.value)}
+                placeholder="请输入高德地图安全密钥 1"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.amapSecurityKey1 ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {errors.amapSecurityKey1 && (
+                <p className="text-red-600 text-sm">{errors.amapSecurityKey1}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                高德地图安全密钥 2
+              </label>
+              <input
+                type="password"
+                value={apiKeys.amapSecurityKey2}
+                onChange={(e) => handleInputChange('amapSecurityKey2', e.target.value)}
+                placeholder="请输入高德地图安全密钥 2"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.amapSecurityKey2 ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {errors.amapSecurityKey2 && (
+                <p className="text-red-600 text-sm">{errors.amapSecurityKey2}</p>
+              )}
+            </div>
           </div>
         </div>
 

@@ -53,7 +53,7 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
         startDate: trip.startDate || '',
         endDate: trip.endDate || '',
         budget: trip.budget || '',
-        travelers: trip.travelers || 1,
+        travelers: trip.travelers !== undefined && trip.travelers !== null ? trip.travelers : 1,
         // 确保 preferences 是从 Trip 对象中正确获取
         preferences: trip.preferences ? new TravelPreferences(trip.preferences) : new TravelPreferences()
       })
