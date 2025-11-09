@@ -546,66 +546,40 @@ const Settings = ({ onBack }) => {
           </h3>
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
             <p className="text-orange-800 text-sm">
-              <strong>说明：</strong>Firebase需要代理才能正常工作，AI API在直连模式下才能正常工作
+              <strong>说明：</strong>Firebase使用代理连接，AI API和地图服务使用直连模式
             </p>
             <p className="text-orange-700 text-sm mt-1">
-              <strong>推荐配置：</strong>保持系统代理开启，关闭AI代理设置
+              <strong>当前配置：</strong>Firebase → 代理 | AI API → 直连 | 地图服务 → 直连
             </p>
           </div>
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="useProxyForAI"
-                checked={settings.useProxyForAI}
-                onChange={(e) => handleSettingChange('useProxyForAI', e.target.checked)}
-                className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-              />
-              <label htmlFor="useProxyForAI" className="ml-2 text-sm font-medium text-gray-700">
-                为AI服务启用代理
-              </label>
-            </div>
-            
-            {settings.useProxyForAI && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  代理端口
-                </label>
-                <input
-                  type="text"
-                  value={settings.proxyPort}
-                  onChange={(e) => handleSettingChange('proxyPort', e.target.value)}
-                  placeholder="例如：7890"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-                <p className="text-xs text-gray-500">
-                  默认端口为7890，请根据您的代理软件配置进行修改
-                </p>
+          
+          {/* 代理配置说明 */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="text-blue-800 font-medium mb-2">代理配置说明</h4>
+            <div className="space-y-2 text-blue-700 text-sm">
+              <div className="flex items-start">
+                <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span><strong>Firebase：</strong>始终使用代理连接，确保稳定访问</span>
               </div>
-            )}
-
-            {/* 代理配置建议 */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-blue-800 font-medium mb-2">代理配置建议</h4>
-              <div className="space-y-2 text-blue-700 text-sm">
-                <div className="flex items-start">
-                  <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span><strong>Firebase：</strong>始终需要系统代理才能正常工作</span>
-                </div>
-                <div className="flex items-start">
-                  <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span><strong>AI API：</strong>在直连模式下工作最佳，建议关闭AI代理设置</span>
-                </div>
-                <div className="flex items-start">
-                  <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span><strong>推荐设置：</strong>保持系统代理开启，关闭AI代理设置</span>
-                </div>
+              <div className="flex items-start">
+                <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span><strong>AI API：</strong>使用直连模式，避免代理导致的连接问题</span>
+              </div>
+              <div className="flex items-start">
+                <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span><strong>地图服务：</strong>使用直连模式，确保地图正常显示</span>
+              </div>
+              <div className="flex items-start">
+                <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span><strong>系统要求：</strong>请确保系统代理已正确配置并运行</span>
               </div>
             </div>
           </div>

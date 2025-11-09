@@ -11,13 +11,7 @@ export class Trip {
     this.duration = data.duration || 0
     this.budget = data.budget || 0
     this.travelers = data.travelers || 1
-    this.preferences = data.preferences || {
-      interests: [],
-      pace: 'moderate', // slow, moderate, fast
-      accommodation: 'hotel', // hotel, hostel, apartment, luxury
-      transportation: 'mixed', // car, public, mixed
-      food: 'local' // local, international, budget, luxury
-    }
+    this.preferences = data.preferences || new TravelPreferences()
     this.itinerary = data.itinerary || []
     this.status = data.status || 0 // 0: 规划中, 1: 已完成
     this.createdAt = data.createdAt || new Date().toISOString()
@@ -72,8 +66,17 @@ export class Trip {
     return this.duration
   }
 
+  // 
+  // ---------------------------------------------
+  // Firebase 错误修复：
+  // ---------------------------------------------
   // 转换为Firestore文档格式
   toFirestore() {
+    //
+    // Firebase 不接受类实例 (custom object)。
+    // 我们必须通过 {...this.preferences} 将 TravelPreferences 实例
+    // 转换回一个 Firestore 可以理解的普通JavaScript对象 (POJO)。
+    //
     return {
       userId: this.userId,
       title: this.title,
@@ -84,7 +87,7 @@ export class Trip {
       duration: this.duration,
       budget: this.budget,
       travelers: this.travelers,
-      preferences: this.preferences,
+      preferences: { ...this.preferences }, // <--- 这是唯一的修改
       itinerary: this.itinerary,
       status: this.status,
       createdAt: this.createdAt,
@@ -97,10 +100,17 @@ export class Trip {
   // 从Firestore文档创建Trip实例
   static fromFirestore(doc) {
     const data = doc.data()
-    return new Trip({
+    
+    // 当从Firestore读回数据时，data.preferences 已经是一个普通对象。
+    // 我们用它来创建一个新的 TravelPreferences 实例，
+    // 这样在我们的JS代码中就可以使用这个类了。
+    const tripData = {
       id: doc.id,
-      ...data
-    })
+      ...data,
+      preferences: new TravelPreferences(data.preferences)
+    };
+    
+    return new Trip(tripData)
   }
 }
 

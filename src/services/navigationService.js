@@ -32,10 +32,14 @@ export class NavigationService {
     const apiKey = this.getApiKey()
     
     return new Promise((resolve, reject) => {
+      console.group('🗺️ 导航服务 - 插件加载')
+      console.log('🔑 API Key状态:', apiKey ? `${apiKey.substring(0, 8)}...` : '未配置')
+      
       // 检查是否已经加载了所有必需的插件
       if (window.AMap && AMap.Driving && AMap.Transit && AMap.Walking) {
         this.isLoaded = true
         console.log('✅ 导航插件已存在，直接使用')
+        console.groupEnd()
         resolve(true)
         return
       }
@@ -48,9 +52,15 @@ export class NavigationService {
         this.loadNavigationPluginsOnly(apiKey)
           .then(() => {
             this.isLoaded = true
+            console.log('✅ 导航插件加载完成')
+            console.groupEnd()
             resolve(true)
           })
-          .catch(reject)
+          .catch((error) => {
+            console.error('❌ 导航插件加载失败:', error)
+            console.groupEnd()
+            reject(error)
+          })
         return
       }
 
@@ -62,13 +72,25 @@ export class NavigationService {
       
       script.onload = () => {
         console.log('✅ 基础地图API和导航插件加载成功')
-        this.isLoaded = true
-        resolve(true)
+        
+        // 等待插件完全初始化
+        setTimeout(() => {
+          this.isLoaded = true
+          console.log('✅ 导航插件初始化完成')
+          console.groupEnd()
+          resolve(true)
+        }, 100)
       }
       
       script.onerror = () => {
         console.error('❌ 基础地图API和导航插件加载失败')
-        reject(new Error('基础地图API和导航插件加载失败'))
+        console.log('💡 可能的原因:')
+        console.log('• API Key无效或过期')
+        console.log('• 网络连接问题')
+        console.log('• 域名未授权')
+        console.log('• 防火墙或网络限制')
+        console.groupEnd()
+        reject(new Error('基础地图API和导航插件加载失败，请检查API Key和网络连接'))
       }
       
       document.head.appendChild(script)

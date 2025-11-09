@@ -40,6 +40,76 @@ export class AIService {
     return config
   }
 
+  // 检查网络连接状态 - 简化版本，不进行实际网络测试
+  async checkNetworkStatus() {
+    console.log('🔍 检查网络连接状态...')
+    
+    // 假设网络连接正常，专注于API调用
+    return {
+      basicNetwork: true,
+      apiEndpoint: true,
+      overall: true
+    }
+  }
+
+  // 智能网络重试策略
+  async smartRetryRequest(url, config, maxRetries = 3) {
+    let lastError = null
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 第 ${attempt} 次尝试调用API...`)
+        
+        // 检查网络状态
+        const networkStatus = await this.checkNetworkStatus()
+        if (!networkStatus.overall) {
+          console.warn('⚠️ 网络连接不稳定，等待重试...')
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
+          continue
+        }
+        
+        // 添加超时处理
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 60000) // 60秒超时
+        config.signal = controller.signal
+
+        const response = await fetch(url, config)
+        clearTimeout(timeoutId)
+        
+        // 如果是网络错误，重试
+        if (!response.ok && response.status >= 500) {
+          console.warn(`⚠️ 服务器错误 (${response.status})，准备重试...`)
+          lastError = new Error(`服务器错误: ${response.status}`)
+          continue
+        }
+        
+        return response
+        
+      } catch (error) {
+        lastError = error
+        
+        // 如果是网络错误或超时，重试
+        if (error.name === 'AbortError' || error.message.includes('Failed to fetch')) {
+          console.warn(`⚠️ 网络错误 (${error.message})，准备重试...`)
+          
+          if (attempt < maxRetries) {
+            // 指数退避策略
+            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000)
+            console.log(`⏳ 等待 ${delay}ms 后重试...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
+        }
+        
+        // 其他错误直接抛出
+        throw error
+      }
+    }
+    
+    // 所有重试都失败
+    throw lastError || new Error('API请求失败，重试次数已用完')
+  }
+
   // 调用DeepSeek API生成行程（带重试机制）
   async generateItinerary(tripData) {
     console.group('🤖 AI服务 - 行程生成接口调用')
@@ -74,8 +144,8 @@ export class AIService {
       const requestConfig = this.getRequestConfig(apiKey, requestBody)
       console.log('📡 请求配置:', requestConfig)
 
-      // 使用重试机制调用API
-      const response = await this.makeApiRequestWithRetry(
+      // 使用智能重试机制调用API
+      const response = await this.smartRetryRequest(
         `${this.baseURL}/chat/completions`,
         requestConfig,
         3 // 重试3次

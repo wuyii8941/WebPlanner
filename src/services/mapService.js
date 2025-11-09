@@ -126,36 +126,134 @@ export class MapService {
     if (!this.map || !destination) return
     
     try {
-      console.log('🗺️ 地图服务 - 智能设置地图中心:', destination)
+      console.group('🗺️ 地图服务 - 智能设置地图中心')
+      console.log('📍 目的地:', destination)
       
-      // 提取城市名称（如果目的地包含城市信息）
-      let city = destination
-      if (destination.includes('市') || destination.includes('省')) {
-        // 尝试提取城市名称
-        const cityMatch = destination.match(/([^省]+市|[^省]+区|[^省]+县)/)
-        if (cityMatch) {
-          city = cityMatch[0]
+      // 确保地图服务已初始化
+      if (!this.geocoder) {
+        await this.loadMapAPI()
+        if (!this.geocoder) {
+          this.geocoder = new AMap.Geocoder({
+            city: '全国'
+          })
         }
       }
+      
+      // 智能提取城市名称
+      let city = this.extractCityFromDestination(destination)
+      console.log('🏙️ 提取的城市:', city)
       
       // 设置地理编码器的城市参数
       if (this.geocoder) {
         this.geocoder.setCity(city)
       }
       
+      // 尝试地理编码
       const location = await this.geocodeAddress(destination)
       if (location) {
         this.map.setCenter([location.lng, location.lat])
         this.map.setZoom(12) // 设置合适的缩放级别
         console.log('✅ 地图中心设置成功:', { location, city })
+        console.groupEnd()
         return location
       }
     } catch (error) {
-      console.warn('⚠️ 无法设置地图中心，使用默认位置:', error)
-      // 如果无法解析目的地，使用默认位置
-      this.map.setCenter([116.397428, 39.90923])
-      this.map.setZoom(10)
+      console.warn('⚠️ 无法设置地图中心:', error)
+      console.log('🔄 使用备用方案...')
+      
+      // 备用方案：使用知名城市的坐标
+      const fallbackLocation = this.getFallbackLocation(destination)
+      if (fallbackLocation) {
+        this.map.setCenter([fallbackLocation.lng, fallbackLocation.lat])
+        this.map.setZoom(10)
+        console.log('✅ 使用备用位置:', fallbackLocation)
+      } else {
+        // 最终备用：使用默认位置
+        this.map.setCenter([116.397428, 39.90923])
+        this.map.setZoom(10)
+        console.log('✅ 使用默认位置')
+      }
+      console.groupEnd()
     }
+  }
+
+  // 从目的地中智能提取城市名称
+  extractCityFromDestination(destination) {
+    if (!destination) return '全国'
+    
+    // 常见城市名称映射
+    const cityMap = {
+      '北京': '北京市',
+      '上海': '上海市',
+      '广州': '广州市',
+      '深圳': '深圳市',
+      '杭州': '杭州市',
+      '成都': '成都市',
+      '重庆': '重庆市',
+      '西安': '西安市',
+      '南京': '南京市',
+      '武汉': '武汉市',
+      '天津': '天津市',
+      '苏州': '苏州市',
+      '厦门': '厦门市',
+      '青岛': '青岛市',
+      '大连': '大连市',
+      '长沙': '长沙市',
+      '郑州': '郑州市',
+      '沈阳': '沈阳市',
+      '宁波': '宁波市',
+      '无锡': '无锡市'
+    }
+    
+    // 检查是否直接匹配城市名称
+    for (const [key, value] of Object.entries(cityMap)) {
+      if (destination.includes(key)) {
+        return value
+      }
+    }
+    
+    // 尝试提取城市名称模式
+    const patterns = [
+      /([^省]+市)/,           // 匹配"XX市"
+      /([^省]+区)/,           // 匹配"XX区"
+      /([^省]+县)/,           // 匹配"XX县"
+      /([^省]+自治州)/,       // 匹配"XX自治州"
+      /([^省]+特别行政区)/     // 匹配"XX特别行政区"
+    ]
+    
+    for (const pattern of patterns) {
+      const match = destination.match(pattern)
+      if (match) {
+        return match[0]
+      }
+    }
+    
+    // 如果无法提取，返回"全国"
+    return '全国'
+  }
+
+  // 获取备用位置坐标
+  getFallbackLocation(destination) {
+    const fallbackLocations = {
+      '北京': { lng: 116.397428, lat: 39.90923 },
+      '上海': { lng: 121.473701, lat: 31.230416 },
+      '广州': { lng: 113.264385, lat: 23.129112 },
+      '深圳': { lng: 114.057868, lat: 22.543099 },
+      '杭州': { lng: 120.15507, lat: 30.274085 },
+      '成都': { lng: 104.066541, lat: 30.572269 },
+      '重庆': { lng: 106.551643, lat: 29.562849 },
+      '西安': { lng: 108.940174, lat: 34.341568 },
+      '南京': { lng: 118.796877, lat: 32.060255 },
+      '武汉': { lng: 114.305392, lat: 30.593099 }
+    }
+    
+    for (const [city, location] of Object.entries(fallbackLocations)) {
+      if (destination.includes(city)) {
+        return location
+      }
+    }
+    
+    return null
   }
 
   // 地理编码 - 将地址转换为坐标

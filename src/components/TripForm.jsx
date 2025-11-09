@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
+// 移除 createTrip 和 updateTrip
+// import { createTrip, updateTrip } from '../services/tripService' 
 import { Trip, TravelPreferences } from '../models/Trip'
-import { createTrip, updateTrip } from '../services/tripService'
 import { aiService } from '../services/aiService'
 import { speechService } from '../services/speechService'
 import { ErrorAlert } from './ErrorDisplay'
@@ -15,7 +16,7 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
     destination: '',
     startDate: '',
     endDate: '',
-    budget: '',
+    budget: '', 
     travelers: 1,
     preferences: new TravelPreferences()
   })
@@ -29,8 +30,8 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
   const [speechTranscript, setSpeechTranscript] = useState('')
   const [speechStatus, setSpeechStatus] = useState('')
   
-  // 防抖引用，防止快速连续点击
-  const submitTimeoutRef = useRef(null)
+  // Bug 2 修复：保留同步锁，防止用户手动双击
+  const isSubmittingRef = useRef(false);
 
   // 兴趣选项
   const interestOptions = [
@@ -44,13 +45,6 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
     if (trip) {
       console.group('🔄 TripForm - 编辑模式数据加载')
       console.log('📋 传入的trip对象:', trip)
-      console.log('🔑 trip.id:', trip.id)
-      console.log('📊 trip数据:', {
-        title: trip.title,
-        destination: trip.destination,
-        startDate: trip.startDate,
-        endDate: trip.endDate
-      })
       
       setFormData({
         title: trip.title || '',
@@ -60,7 +54,8 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
         endDate: trip.endDate || '',
         budget: trip.budget || '',
         travelers: trip.travelers || 1,
-        preferences: trip.preferences || new TravelPreferences()
+        // 确保 preferences 是从 Trip 对象中正确获取
+        preferences: trip.preferences ? new TravelPreferences(trip.preferences) : new TravelPreferences()
       })
       
       console.log('✅ 编辑模式数据加载完成')
@@ -68,25 +63,29 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
     }
   }, [trip])
 
-  // 清理函数，防止内存泄漏
+  // 清理函数
   useEffect(() => {
     return () => {
-      // 清除防抖定时器
-      if (submitTimeoutRef.current) {
-        clearTimeout(submitTimeoutRef.current)
-      }
-      // 重置全局提交状态
-      window.__tripFormSubmitting = false
+      isSubmittingRef.current = false;
     }
   }, [])
 
-  // 处理表单输入变化
+  // Bug 3 修复：修改 handleInputChange
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
+    if (field === 'budget' || field === 'travelers') {
+      if (value === '') {
+        setFormData(prev => ({ ...prev, [field]: '' }))
+        return
+      }
+      const numValue = field === 'budget' ? parseFloat(value) : parseInt(value, 10);
+      if (!isNaN(numValue) && numValue >= 0) {
+        setFormData(prev => ({ ...prev, [field]: numValue }))
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }))
+    }
   }
+
 
   // 处理偏好设置变化
   const handlePreferenceChange = (field, value) => {
@@ -113,62 +112,36 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
   const validateForm = () => {
     const newErrors = []
 
-    if (!formData.title.trim()) {
-      newErrors.push('旅行标题不能为空')
-    }
-
-    if (!formData.destination.trim()) {
-      newErrors.push('目的地不能为空')
-    }
-
-    if (!formData.startDate) {
-      newErrors.push('开始日期不能为空')
-    }
-
-    if (!formData.endDate) {
-      newErrors.push('结束日期不能为空')
-    }
-
+    if (!formData.title.trim()) newErrors.push('旅行标题不能为空')
+    if (!formData.destination.trim()) newErrors.push('目的地不能为空')
+    if (!formData.startDate) newErrors.push('开始日期不能为空')
+    if (!formData.endDate) newErrors.push('结束日期不能为空')
     if (formData.startDate && formData.endDate && new Date(formData.startDate) >= new Date(formData.endDate)) {
       newErrors.push('结束日期必须晚于开始日期')
     }
-
-    if (formData.budget && formData.budget < 0) {
-      newErrors.push('预算不能为负数')
-    }
-
-    if (formData.travelers < 1) {
-      newErrors.push('旅行人数至少为1人')
-    }
+    if (formData.budget && formData.budget < 0) newErrors.push('预算不能为负数')
+    if (formData.travelers < 1) newErrors.push('旅行人数至少为1人')
 
     setErrors(newErrors)
     return newErrors.length === 0
   }
 
-  // 处理表单提交
+  // 
+  // ---------------------------------------------
+  // 最终 Bug 2 修复 (逻辑简化):
+  // ---------------------------------------------
+  // handleSubmit 现在只负责验证和传递数据，
+  // 所有的 create/update 逻辑都交给父组件 (AppPage) 处理。
+  //
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // 防止重复提交 - 使用更严格的检查
-    if (loading) {
-      console.log('⚠️ 表单正在提交中，忽略重复点击')
+    if (isSubmittingRef.current || loading) {
+      console.log('⚠️ 提交正在进行中，忽略重复点击')
       return
     }
-    
-    // 额外的重复提交保护 - 检查是否已经有提交正在进行
-    if (window.__tripFormSubmitting) {
-      console.log('🚫 表单提交正在进行中，忽略重复请求')
-      return
-    }
-    
-    // 设置全局提交状态
-    window.__tripFormSubmitting = true
-    
-    console.group('🚀 创建行程 - 表单提交')
-    console.log('📋 表单数据:', formData)
-    console.log('👤 用户信息:', user)
-    console.log('🔄 编辑模式:', trip ? '是' : '否')
-    console.log('🔑 编辑的旅行ID:', trip?.id)
+        
+    console.group('🚀 TripForm - 表单提交')
     
     if (!validateForm()) {
       console.error('❌ 表单验证失败:', errors)
@@ -176,63 +149,48 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
       return
     }
 
-    // 检查用户信息
     if (!effectiveUser || !effectiveUser.id) {
       console.error('❌ 用户信息缺失，无法创建行程')
       setErrors(['用户信息缺失，请重新登录'])
       console.groupEnd()
-      
-      // 延迟跳转到登录页面
-      setTimeout(() => {
-        window.location.href = '/'
-      }, 2000)
       return
     }
 
-    // 立即禁用提交按钮，防止重复提交
     setLoading(true)
+    isSubmittingRef.current = true;
     setErrors([])
 
     try {
+      // Bug 3 修复：确保数据类型正确
       const tripData = {
         ...formData,
-        budget: formData.budget ? parseFloat(formData.budget) : 0,
-        travelers: parseInt(formData.travelers),
-        status: 0 // 0: 规划中
+        budget: Number(formData.budget) || 0,
+        travelers: Number(formData.travelers) || 1,
+        status: 0, // 0: 规划中
+        // 确保 preferences 是一个普通对象
+        preferences: { ...formData.preferences } 
       }
 
-      console.log('📊 处理后的行程数据:', tripData)
+      console.log('📊 准备将表单数据传递给 onSave:', tripData)
 
-      let result
-      if (trip) {
-        // 更新现有旅行 - 只传递需要更新的字段
-        console.log('🔄 更新现有旅行:')
-        console.log('🔑 使用的文档ID:', trip.id)
-        console.log('📝 更新数据:', tripData)
-        result = await updateTrip(trip.id, tripData)
-      } else {
-        // 创建新旅行
-        console.log('🆕 创建新旅行，用户ID:', effectiveUser.id)
-        result = await createTrip(tripData, effectiveUser.id)
-      }
-
-      console.log('✅ 行程保存成功:', result)
-      console.groupEnd()
-      
-      // 成功创建后调用onSave回调，返回主页
-      // 确保只调用一次onSave
+      // 
+      // **核心修复**：
+      // 不再调用 createTrip 或 updateTrip。
+      // 只调用 onSave，并传递 *原始表单数据 (tripData)*。
+      //
       if (typeof onSave === 'function') {
-        onSave(result)
+        await onSave(tripData) // <--- 传递 tripData，而不是 result
       }
+      
+      console.log('✅ onSave (AppPage.handleSaveTrip) 执行完毕')
+      console.groupEnd()
+
     } catch (error) {
-      console.error('❌ 行程保存失败:', error)
-      console.log('💡 错误详情:', {
-        message: error.message,
-        stack: error.stack
-      })
+      // onSave 可能会抛出错误 (例如API失败)，在这里捕获
+      console.error('❌ onSave (AppPage.handleSaveTrip) 执行失败:', error)
+      console.log('💡 错误详情:', { message: error.message, stack: error.stack })
       console.groupEnd()
       
-      // 根据错误类型显示友好的错误信息
       let errorMessage = error.message
       if (error.message.includes('CONNECTION_TIMED_OUT') || error.message.includes('Failed to fetch')) {
         errorMessage = '网络连接超时，请检查网络连接后重试'
@@ -242,11 +200,13 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
       
       setErrors([errorMessage])
     } finally {
-      // 确保在finally中重置loading状态和全局提交状态
+      // 释放锁
       setLoading(false)
-      window.__tripFormSubmitting = false
+      isSubmittingRef.current = false;
     }
   }
+
+  // ... (calculateDuration, AI 和 Speech 相关函数保持不变) ...
 
   // 计算旅行天数
   const calculateDuration = () => {
@@ -271,8 +231,8 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
     try {
       const result = await aiService.generateItinerary({
         ...formData,
-        budget: formData.budget ? parseFloat(formData.budget) : 0,
-        travelers: parseInt(formData.travelers)
+        budget: Number(formData.budget) || 0,
+        travelers: Number(formData.travelers) || 1
       })
 
       if (result.success) {
@@ -290,13 +250,11 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
 
   // 使用AI生成的行程
   const handleUseAiItinerary = () => {
-    // 将AI生成的行程应用到表单数据中
     setFormData(prev => ({
       ...prev,
       itinerary: aiGeneratedItinerary
     }))
     
-    // 显示成功消息
     alert(`已应用 ${aiGeneratedItinerary.length} 个AI生成的行程项！现在可以保存旅行。`)
   }
 
@@ -307,7 +265,6 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
 
   // 语音识别处理函数
   const handleSpeechStart = (field) => {
-    // 如果已经在监听，先停止
     if (speechListening) {
       handleSpeechStop()
       return
@@ -327,17 +284,14 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
         setSpeechTranscript(transcript)
         
         if (isFinal) {
-          // 最终结果，更新表单字段
           handleInputChange(field, transcript)
           setSpeechListening(false)
           setSpeechField(null)
           setSpeechTranscript('')
           setSpeechStatus('语音输入结束')
           
-          // 显示成功消息
           setErrors([])
           
-          // 2秒后清除状态
           setTimeout(() => {
             setSpeechStatus('')
           }, 2000)
@@ -350,7 +304,6 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
         setSpeechTranscript('')
         setSpeechStatus('语音输入失败')
         
-        // 显示友好的错误消息
         let errorMessage = '语音识别失败'
         if (error.includes('not-allowed')) {
           errorMessage = '麦克风权限被拒绝，请允许浏览器访问麦克风'
@@ -362,7 +315,6 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
         
         setErrors([errorMessage])
         
-        // 2秒后清除状态
         setTimeout(() => {
           setSpeechStatus('')
         }, 2000)
@@ -373,7 +325,6 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
         setSpeechTranscript('')
         setSpeechStatus('语音输入结束')
         
-        // 2秒后清除状态
         setTimeout(() => {
           setSpeechStatus('')
         }, 2000)
@@ -393,7 +344,6 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
     setSpeechTranscript('')
     setSpeechStatus('语音输入已停止')
     
-    // 2秒后清除状态
     setTimeout(() => {
       setSpeechStatus('')
     }, 2000)
@@ -402,6 +352,7 @@ const TripForm = ({ user, trip = null, onSave, onCancel }) => {
   // 检查浏览器是否支持语音识别
   const isSpeechSupported = speechService.isSupported()
 
+  // ... (JSX 渲染部分保持不变) ...
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm p-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">

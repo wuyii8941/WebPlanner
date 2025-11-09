@@ -28,21 +28,15 @@ export class ProxyService {
         return true
       }
       
-      // AI相关域名根据设置决定
+      // AI相关域名直连（不经过代理）
       if (this.aiDomains.some(domain => hostname.includes(domain))) {
-        const settings = localStorage.getItem('webplanner_settings')
-        if (settings) {
-          try {
-            const parsedSettings = JSON.parse(settings)
-            if (parsedSettings.useProxyForAI) {
-              console.log(`🌐 ${hostname} - 使用代理 (AI服务)`)
-              return true
-            }
-          } catch (error) {
-            console.log(`🌐 ${hostname} - 直连模式 (AI服务默认)`)
-          }
-        }
         console.log(`🌐 ${hostname} - 直连模式 (AI服务)`)
+        return false
+      }
+      
+      // 高德地图相关域名直连
+      if (hostname.includes('amap.com') || hostname.includes('webapi.amap.com')) {
+        console.log(`🌐 ${hostname} - 直连模式 (地图服务)`)
         return false
       }
       

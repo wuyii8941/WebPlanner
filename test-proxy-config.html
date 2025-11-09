@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代理配置测试</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .log {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-pass {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .test-fail {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .config-card {
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 代理配置测试</h1>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button class="btn" onclick="runFullTest()">运行完整测试</button>
+            <button class="btn btn-success" onclick="testProxyDecisions()">测试代理决策</button>
+            <button class="btn" onclick="testNetworkConnections()">测试网络连接</button>
+            <button class="btn" onclick="showConfigReport()">显示配置报告</button>
+        </div>
+
+        <div id="log" class="log" style="display: none;"></div>
+
+        <div id="results" style="display: none;">
+            <div class="test-section">
+                <h3>代理决策测试结果</h3>
+                <div id="proxyTestResults"></div>
+            </div>
+
+            <div class="test-section">
+                <h3>网络连接测试结果</h3>
+                <div id="connectionTestResults"></div>
+            </div>
+
+            <div class="test-section">
+                <h3>配置报告</h3>
+                <div id="configReport"></div>
+            </div>
+
+            <div id="summary" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入代理服务
+        import { proxyService } from './src/services/proxyService.js'
+
+        let logContent = '';
+
+        function addLog(message) {
+            logContent += message + '\n';
+            const logElement = document.getElementById('log');
+            logElement.textContent = logContent;
+            logElement.scrollTop = logElement.scrollHeight;
+            logElement.style.display = 'block';
+        }
+
+        // 测试URL列表
+        const testUrls = [
+            {
+                url: 'https://webplanner-app.firebaseapp.com',
+                service: 'Firebase',
+                expectedProxy: true
+            },
+            {
+                url: 'https://api.deepseek.com/v1/models',
+                service: 'AI API',
+                expectedProxy: false
+            },
+            {
+                url: 'https://restapi.amap.com/v3/geocode/geo',
+                service: '高德地图',
+                expectedProxy: false
+            },
+            {
+                url: 'https://firebase.googleapis.com',
+                service: 'Firebase API',
+                expectedProxy: true
+            },
+            {
+                url: 'https://dashscope.aliyuncs.com',
+                service: '阿里云AI',
+                expectedProxy: false
+            }
+        ];
+
+        // 测试代理决策
+        function testProxyDecisions() {
+            addLog('🌐 开始代理决策测试...');
+            
+            let allPassed = true;
+            let resultsHtml = '';
+            
+            testUrls.forEach(test => {
+                const shouldUseProxy = proxyService.shouldUseProxy(test.url);
+                const passed = shouldUseProxy === test.expectedProxy;
+                
+                const resultClass = passed ? 'test-pass' : 'test-fail';
+                const icon = passed ? '✅' : '❌';
+                
+                resultsHtml += `
+                    <div class="test-result ${resultClass}">
+                        <strong>${icon} ${test.service}</strong><br>
+                        URL: ${test.url}<br>
+                        预期代理: ${test.expectedProxy ? '是' : '否'}<br>
+                        实际代理: ${shouldUseProxy ? '是' : '否'}<br>
+                        结果: ${passed ? '通过' : '失败'}
+                    </div>
+                `;
+                
+                if (!passed) {
+                    allPassed = false;
+                }
+            });
+            
+            document.getElementById('proxyTestResults').innerHTML = resultsHtml;
+            document.getElementById('results').style.display = 'block';
+            
+            addLog(`📊 代理决策测试结果: ${allPassed ? '✅ 所有测试通过' : '❌ 部分测试失败'}`);
+            
+            return allPassed;
+        }
+
+        // 测试网络连接
+        async function testNetworkConnections() {
+            addLog('🔗 开始网络连接测试...');
+            
+            const results = [];
+            let resultsHtml = '';
+            
+            for (const test of testUrls) {
+                addLog(`\n🔍 测试 ${test.service} 连接...`);
+                
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch(test.url, {
+                        method: 'HEAD',
+                        signal: AbortSignal.timeout(10000)
+                    });
+                    const endTime = Date.now();
+                    
+                    const result = {
+                        service: test.service,
+                        url: test.url,
+                        success: true,
+                        status: response.status,
+                        responseTime: endTime - startTime,
+                        proxyUsed: proxyService.shouldUseProxy(test.url)
+                    };
+                    
+                    const resultClass = 'test-pass';
+                    resultsHtml += `
+                        <div class="test-result ${resultClass}">
+                            <strong>✅ ${test.service}</strong><br>
+                            状态: ${response.status}<br>
+                            响应时间: ${result.responseTime}ms<br>
+                            代理使用: ${result.proxyUsed ? '是' : '否'}
+                        </div>
+                    `;
+                    
+                    addLog(`✅ ${test.service}: ${response.status} - ${result.responseTime}ms`);
+                    addLog(`   代理使用: ${result.proxyUsed ? '是' : '否'}`);
+                    
+                    results.push(result);
+                } catch (error) {
+                    const result = {
+                        service: test.service,
+                        url: test.url,
+                        success: false,
+                        error: error.message,
+                        proxyUsed: proxyService.shouldUseProxy(test.url)
+                    };
+                    
+                    const resultClass = 'test-fail';
+                    resultsHtml += `
+                        <div class="test-result ${resultClass}">
+                            <strong>❌ ${test.service}</strong><br>
+                            错误: ${error.message}<br>
+                            代理使用: ${result.proxyUsed ? '是' : '否'}
+                        </div>
+                    `;
+                    
+                    addLog(`❌ ${test.service}: ${error.message}`);
+                    addLog(`   代理使用: ${result.proxyUsed ? '是' : '否'}`);
+                    
+                    results.push(result);
+                }
+            }
+            
+            const successCount = results.filter(r => r.success).length;
+            addLog(`\n📊 连接测试结果: ${successCount}/${results.length} 成功`);
+            
+            document.getElementById('connectionTestResults').innerHTML = resultsHtml;
+            document.getElementById('results').style.display = 'block';
+            
+            return results;
+        }
+
+        // 显示配置报告
+        function showConfigReport() {
+            addLog('📋 生成配置报告...');
+            
+            const config = {
+                firebaseDomains: proxyService.firebaseDomains,
+                aiDomains: proxyService.aiDomains,
+                currentSettings: proxyService.getProxyInfo()
+            };
+            
+            let configHtml = `
+                <div class="config-grid">
+                    <div class="config-card">
+                        <h4>🔧 当前代理配置</h4>
+                        <p><strong>Firebase域名:</strong><br>${config.firebaseDomains.join('<br>')}</p>
+                        <p><strong>AI服务域名:</strong><br>${config.aiDomains.join('<br>')}</p>
+                        <p><strong>代理设置:</strong><br>${JSON.stringify(config.currentSettings, null, 2)}</p>
+                    </div>
+                    
+                    <div class="config-card">
+                        <h4>🎯 代理策略</h4>
+                        <p>• Firebase服务: 使用代理</p>
+                        <p>• AI服务: 直连模式</p>
+                        <p>• 地图服务: 直连模式</p>
+                        <p>• 其他服务: 直连模式</p>
+                    </div>
+                    
+                    <div class="config-card">
+                        <h4>💡 使用说明</h4>
+                        <p>1. 确保系统代理已正确配置并运行</p>
+                        <p>2. Firebase将通过代理连接</p>
+                        <p>3. AI API和地图服务将直连</p>
+                        <p>4. 如果Firebase连接失败，请检查代理设置</p>
+                        <p>5. 如果AI API连接失败，请检查网络环境</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('configReport').innerHTML = configHtml;
+            document.getElementById('results').style.display = 'block';
+            
+            return config;
+        }
+
+        // 运行完整测试
+        async function runFullTest() {
+            // 重置显示
+            logContent = '';
+            document.getElementById('log').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            addLog('🚀 开始完整代理配置测试...\n');
+            
+            // 步骤1: 测试代理决策
+            const proxyTestsPassed = testProxyDecisions();
+            
+            // 步骤2: 测试网络连接
+            const connectionResults = await testNetworkConnections();
+            
+            // 步骤3: 生成配置报告
+            const configReport = showConfigReport();
+            
+            // 分析结果
+            const connectionSuccessCount = connectionResults.filter(r => r.success).length;
+            const allConnectionsSuccessful = connectionSuccessCount === connectionResults.length;
+            
+            // 显示总结
+            const summaryElement = document.getElementById('summary');
+            let summaryHtml = `
+                <h3>🎯 测试总结</h3>
+                <p><strong>代理决策测试:</strong> ${proxyTestsPassed ? '✅ 通过' : '❌ 失败'}</p>
+                <p><strong>网络连接测试:</strong> ${connectionSuccessCount}/${connectionResults.length} 成功</p>
+                <p><strong>总体状态:</strong> ${proxyTestsPassed && allConnectionsSuccessful ? '✅ 配置正常' : '⚠️ 需要调整'}</p>
+            `;
+            
+            if (!proxyTestsPassed) {
+                summaryHtml += `
+                    <div style="margin-top: 15px;">
+                        <h4>🔧 问题诊断</h4>
+                        <p>• 检查代理服务配置是否正确</p>
+                        <p>• 验证域名匹配规则</p>
+                    </div>
+                `;
+            }
+            
+            if (!allConnectionsSuccessful) {
+                const failedConnections = connectionResults.filter(r => !r.success);
+                summaryHtml += `
+                    <div style="margin-top: 15px;">
+                        <h4>🌐 网络问题</h4>
+                        ${failedConnections.map(failed => `<p>• ${failed.service}: ${failed.error}</p>`).join('')}
+                    </div>
+                `;
+            }
+            
+            summaryElement.innerHTML = summaryHtml;
+            summaryElement.style.display = 'block';
+            summaryElement.className = proxyTestsPassed && allConnectionsSuccessful ? 'result success' : 'result warning';
+            
+            addLog('\n🎯 测试总结:');
+            addLog(`• 代理决策测试: ${proxyTestsPassed ? '✅ 通过' : '❌ 失败'}`);
+            addLog(`• 网络连接测试: ${connectionSuccessCount}/${connectionResults.length} 成功`);
+            addLog(`• 总体状态: ${proxyTestsPassed && allConnectionsSuccessful ? '✅ 配置正常' : '⚠️ 需要调整'}`);
+            
+            if (proxyTestsPassed && allConnectionsSuccessful) {
+                addLog('\n🎉 代理配置测试完成！所有服务配置正确。');
+            } else {
+                addLog('\n⚠️ 代理配置测试完成，但发现一些问题需要处理。');
+            }
+        }
+
+        // 页面加载时显示当前配置
+        window.onload = function() {
+            addLog('📋 当前代理配置信息:');
+            const config = proxyService.getProxyInfo();
+            addLog(JSON.stringify(config, null, 2));
+        };
+    </script>
+</body>
+</html>
