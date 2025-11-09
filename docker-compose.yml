@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  webplanner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webplanner-app
+    ports:
+      - "8080:80"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webplanner.rule=Host(`localhost`)"
+      - "traefik.http.services.webplanner.loadbalancer.server.port=80"
+
+  # 如果需要后端API服务，可以在这里添加
+  # api:
+  #   build:
+  #     context: ./api
+  #     dockerfile: Dockerfile
+  #   container_name: webplanner-api
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     - NODE_ENV=production
+  #     - DATABASE_URL=${DATABASE_URL}
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - database
+
+  # 数据库服务（如果需要）
+  # database:
+  #   image: postgres:15
+  #   container_name: webplanner-db
+  #   environment:
+  #     - POSTGRES_DB=webplanner
+  #     - POSTGRES_USER=webplanner_user
+  #     - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+
+  # 反向代理（可选）
+  # traefik:
+  #   image: traefik:v2.10
+  #   container_name: traefik
+  #   command:
+  #     - "--api.insecure=true"
+  #     - "--providers.docker=true"
+  #     - "--providers.docker.exposedbydefault=false"
+  #     - "--entrypoints.web.address=:80"
+  #   ports:
+  #     - "80:80"
+  #     - "8081:8080"
+  #   volumes:
+  #     - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
