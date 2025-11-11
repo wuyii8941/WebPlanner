@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强地图标记测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f8f9fa;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            color: #0c5460;
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+        #map-container {
+            width: 100%;
+            height: 500px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .itinerary-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .itinerary-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8fafc;
+        }
+        .category-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .sightseeing { background: #dbeafe; color: #1e40af; }
+        .dining { background: #dcfce7; color: #166534; }
+        .accommodation { background: #f3e8ff; color: #7e22ce; }
+        .transportation { background: #ffedd5; color: #c2410c; }
+        .activity { background: #fce7f3; color: #be185d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ 增强地图标记功能测试</h1>
+        
+        <div class="test-section">
+            <h3>测试说明</h3>
+            <p>这个页面测试增强后的地图标记功能，包括：</p>
+            <ul>
+                <li>✅ 彩色分类标记（不同类别使用不同颜色）</li>
+                <li>✅ 编号标记（每个标记都有序号）</li>
+                <li>✅ 详细的信息窗口</li>
+                <li>✅ 标记连线功能</li>
+                <li>✅ 智能缩放和中心定位</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>测试行程数据</h3>
+            <div class="itinerary-list">
+                <div class="itinerary-item">
+                    <div class="category-badge sightseeing">景点</div>
+                    <h4>南京南站</h4>
+                    <p><strong>时间:</strong> 09:00 (60分钟)</p>
+                    <p><strong>地点:</strong> 南京南站</p>
+                    <p><strong>费用:</strong> ¥0</p>
+                </div>
+                <div class="itinerary-item">
+                    <div class="category-badge dining">餐饮</div>
+                    <h4>新街口附近小吃店</h4>
+                    <p><strong>时间:</strong> 12:00 (90分钟)</p>
+                    <p><strong>地点:</strong> 新街口</p>
+                    <p><strong>费用:</strong> ¥80</p>
+                </div>
+                <div class="itinerary-item">
+                    <div class="category-badge sightseeing">景点</div>
+                    <h4>夫子庙景区</h4>
+                    <p><strong>时间:</strong> 14:00 (120分钟)</p>
+                    <p><strong>地点:</strong> 夫子庙</p>
+                    <p><strong>费用:</strong> ¥60</p>
+                </div>
+                <div class="itinerary-item">
+                    <div class="category-badge dining">餐饮</div>
+                    <h4>夫子庙美食街</h4>
+                    <p><strong>时间:</strong> 17:00 (90分钟)</p>
+                    <p><strong>地点:</strong> 夫子庙美食街</p>
+                    <p><strong>费用:</strong> ¥120</p>
+                </div>
+                <div class="itinerary-item">
+                    <div class="category-badge sightseeing">景点</div>
+                    <h4>明孝陵景区</h4>
+                    <p><strong>时间:</strong> 09:00 (120分钟)</p>
+                    <p><strong>地点:</strong> 明孝陵</p>
+                    <p><strong>费用:</strong> ¥70</p>
+                </div>
+                <div class="itinerary-item">
+                    <div class="category-badge dining">餐饮</div>
+                    <h4>中山陵景区周边餐厅</h4>
+                    <p><strong>时间:</strong> 12:00 (90分钟)</p>
+                    <p><strong>地点:</strong> 中山陵附近</p>
+                    <p><strong>费用:</strong> ¥100</p>
+                </div>
+                <div class="itinerary-item">
+                    <div class="category-badge sightseeing">景点</div>
+                    <h4>中山陵景区</h4>
+                    <p><strong>时间:</strong> 14:00 (180分钟)</p>
+                    <p><strong>地点:</strong> 中山陵</p>
+                    <p><strong>费用:</strong> ¥0</p>
+                </div>
+                <div class="itinerary-item">
+                    <div class="category-badge activity">活动</div>
+                    <h4>新街口商业区</h4>
+                    <p><strong>时间:</strong> 17:00 (120分钟)</p>
+                    <p><strong>地点:</strong> 新街口商业区</p>
+                    <p><strong>费用:</strong> ¥200</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>测试操作</h3>
+            <button class="test-button" onclick="testEnhancedMarkers()">测试增强标记</button>
+            <button class="test-button" onclick="testSingleMarker()">测试单个标记</button>
+            <button class="test-button" onclick="testCategoryMarkers()">测试分类标记</button>
+            <button class="test-button" onclick="clearMap()">清除地图</button>
+        </div>
+
+        <div id="map-container">
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f5f5f5; color: #666;">
+                <div style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🗺️</div>
+                    <p>点击上方按钮测试增强地图标记功能</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="test-section">
+            <h3>测试结果</h3>
+            <div id="result-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let mapService = null;
+        let map = null;
+
+        // 模拟行程数据
+        const mockItinerary = [
+            {
+                title: '南京南站',
+                category: 'transportation',
+                time: '09:00',
+                duration: 60,
+                location: '南京南站',
+                cost: 0,
+                description: '到达南京，开始旅程'
+            },
+            {
+                title: '新街口附近小吃店',
+                category: 'dining',
+                time: '12:00',
+                duration: 90,
+                location: '新街口',
+                cost: 80,
+                description: '品尝南京特色小吃'
+            },
+            {
+                title: '夫子庙景区',
+                category: 'sightseeing',
+                time: '14:00',
+                duration: 120,
+                location: '夫子庙',
+                cost: 60,
+                description: '参观历史文化景区'
+            },
+            {
+                title: '夫子庙美食街',
+                category: 'dining',
+                time: '17:00',
+                duration: 90,
+                location: '夫子庙美食街',
+                cost: 120,
+                description: '继续品尝美食'
+            },
+            {
+                title: '明孝陵景区',
+                category: 'sightseeing',
+                time: '09:00',
+                duration: 120,
+                location: '明孝陵',
+                cost: 70,
+                description: '参观明朝皇陵'
+            },
+            {
+                title: '中山陵景区周边餐厅',
+                category: 'dining',
+                time: '12:00',
+                duration: 90,
+                location: '中山陵附近',
+                cost: 100,
+                description: '午餐休息'
+            },
+            {
+                title: '中山陵景区',
+                category: 'sightseeing',
+                time: '14:00',
+                duration: 180,
+                location: '中山陵',
+                cost: 0,
+                description: '参观孙中山陵墓'
+            },
+            {
+                title: '新街口商业区',
+                category: 'activity',
+                time: '17:00',
+                duration: 120,
+                location: '新街口商业区',
+                cost: 200,
+                description: '购物和休闲'
+            }
+        ];
+
+        // 初始化地图服务
+        async function initMapService() {
+            if (!mapService) {
+                // 动态导入地图服务
+                const module = await import('./src/services/mapService.js');
+                mapService = module.mapService;
+            }
+            return mapService;
+        }
+
+        // 测试增强标记功能
+        async function testEnhancedMarkers() {
+            const service = await initMapService();
+            const resultDiv = document.getElementById('result-content');
+            
+            try {
+                resultDiv.innerHTML = '<div class="info">🗺️ 开始测试增强地图标记功能...</div>';
+                
+                // 初始化地图
+                if (!map) {
+                    await service.initMap('map-container');
+                    map = service.map;
+                }
+                
+                // 添加增强标记
+                const markers = await service.addItineraryMarkers(mockItinerary);
+                
+                // 显示结果
+                const result = `
+                    <div class="success">
+                        <strong>✅ 增强标记功能测试成功!</strong><br>
+                        成功添加标记: ${markers.length}/${mockItinerary.length} 个<br>
+                        功能包括:
+                        <ul>
+                            <li>✅ 彩色分类标记（不同类别不同颜色）</li>
+                            <li>✅ 编号标记（每个标记都有序号）</li>
+                            <li>✅ 详细的信息窗口</li>
+                            <li>✅ 标记连线功能</li>
+                            <li>✅ 智能缩放和中心定位</li>
+                        </ul>
+                    </div>
+                `;
+                resultDiv.innerHTML += result;
+                
+            } catch (error) {
+                resultDiv.innerHTML += `<div class="error">❌ 增强标记功能测试失败: ${error.message}</div>`;
+            }
+        }
+
+        // 测试单个标记
+        async function testSingleMarker() {
+            const service = await initMapService();
+            const resultDiv = document.getElementById('result-content');
+            
+            try {
+                resultDiv.innerHTML = '<div class="info">🗺️ 开始测试单个标记...</div>';
+                
+                // 初始化地图
+                if (!map) {
+                    await service.initMap('map-container');
+                    map = service.map;
+                }
+                
+                // 清除现有标记
+                service.clearMarkers();
+                
+                // 添加单个标记
+                const singleItinerary = [mockItinerary[0]];
+                const markers = await service.addItineraryMarkers(singleItinerary);
+                
+                // 显示结果
+                const result = `
+                    <div class="success">
+                        <strong>✅ 单个标记测试成功!</strong><br>
+                        单个地点时地图会自动放大显示<br>
+                        标记包含类别图标和编号
+                    </div>
+                `;
+                resultDiv.innerHTML += result;
+                
+            } catch (error) {
+                resultDiv.innerHTML += `<div class="error">❌ 单个标记测试失败: ${error.message}</div>`;
+            }
+        }
+
+        // 测试分类标记
+        async function testCategoryMarkers() {
+            const service = await initMapService();
+            const resultDiv = document.getElementById('result-content');
+            
+            try {
+                resultDiv.innerHTML = '<div class="info">🗺️ 开始测试分类标记...</div>';
+                
+                // 初始化地图
+                if (!map) {
+                    await service.initMap('map-container');
+                    map = service.map;
+                }
+                
+                // 清除现有标记
+                service.clearMarkers();
+                
+                // 按类别分组测试
+                const categories = ['sightseeing', 'dining', 'activity'];
+                const categoryItinerary = mockItinerary.filter(item => 
+                    categories.includes(item.category)
+                );
+                
+                const markers = await service.addItineraryMarkers(categoryItinerary);
+                
+                // 显示结果
+                const result = `
+                    <div class="success">
+                        <strong>✅ 分类标记测试成功!</strong><br>
+                        不同类别使用不同颜色标记:<br>
+                        <ul>
+                            <li>🔵 蓝色 - 景点 (sightseeing)</li>
+                            <li>🟢 绿色 - 餐饮 (dining)</li>
+                            <li>🟣 紫色 - 住宿 (accommodation)</li>
+                            <li>🟠 橙色 - 交通 (transportation)</li>
+                            <li>🔴 粉色 - 活动 (activity)</li>
+                        </ul>
+                    </div>
+                `;
+                resultDiv.innerHTML += result;
+                
+            } catch (error) {
+                resultDiv.innerHTML += `<div class="error">❌ 分类标记测试失败: ${error.message}</div>`;
+            }
+        }
+
+        // 清除地图
+        function clearMap() {
+            if (mapService) {
+                mapService.clearMarkers();
+            }
+            const mapContainer = document.getElementById('map-container');
+            mapContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f5f5f5; color: #666;"><div style="text-align: center;"><div style="font-size: 48px; margin-bottom: 10px;">🗺️</div><p>点击上方按钮测试增强地图标记功能</p></div></div>';
+            map = null;
+            document.getElementById('result-content').innerHTML = '';
+        }
+
+        // 页面加载时检查API Key
+        window.addEventListener('load', function() {
+            const apiKeys = localStorage.getItem('webplanner_api_keys');
+            if (!apiKeys || !JSON.parse(apiKeys).baiduApiKey) {
+                document.getElementById('result-content').innerHTML = `
+                    <div class="error">
+                        <strong>❌ 未配置百度地图API Key</strong><br>
+                        请在设置中配置百度地图API Key才能测试地图功能
+                    </div>
+                `;
+            } else {
+                document.getElementById('result-content').innerHTML = `
+                    <div class="success">
+                        <strong>✅ API Key已配置</strong><br>
+                        可以开始测试增强地图标记功能
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

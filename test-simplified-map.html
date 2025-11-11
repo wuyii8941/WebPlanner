@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简化地图功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #map-container {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>简化地图功能测试</h1>
+        
+        <div class="test-section">
+            <h3>测试说明</h3>
+            <p>这个测试页面验证新的简化地图功能：</p>
+            <ul>
+                <li>进入详情页面，点击查看地图</li>
+                <li>渲染出对应的城市</li>
+                <li>显示对应点的坐标</li>
+                <li>不要降级处理，有问题直接报错</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>地图容器</h3>
+            <div id="map-container"></div>
+            <button onclick="testMap()">测试地图功能</button>
+            <button onclick="clearMap()">清除地图</button>
+        </div>
+
+        <div class="test-section">
+            <h3>测试日志</h3>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟旅行数据
+        const testTrip = {
+            destination: "北京市",
+            itinerary: [
+                {
+                    title: "天安门广场",
+                    location: "天安门广场",
+                    time: "09:00",
+                    duration: 120
+                },
+                {
+                    title: "故宫博物院",
+                    location: "故宫博物院",
+                    time: "11:00",
+                    duration: 180
+                },
+                {
+                    title: "王府井大街",
+                    location: "王府井大街",
+                    time: "14:00",
+                    duration: 90
+                }
+            ]
+        };
+
+        // 日志函数
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // 测试地图功能
+        async function testMap() {
+            log("🚀 开始测试地图功能...");
+            
+            try {
+                // 检查是否配置了API Key
+                const apiKeys = localStorage.getItem('webplanner_api_keys');
+                if (!apiKeys) {
+                    throw new Error('请先在设置中配置百度地图API Key');
+                }
+                
+                const parsedKeys = JSON.parse(apiKeys);
+                if (!parsedKeys.baiduApiKey) {
+                    throw new Error('请先在设置中配置百度地图API Key');
+                }
+                
+                log("✅ API Key 配置正确");
+
+                // 加载百度地图API
+                await loadBaiduMapAPI(parsedKeys.baiduApiKey);
+                
+                // 初始化地图
+                const map = await initMap();
+                
+                // 显示旅行信息
+                await showTripOnMap(map, testTrip);
+                
+                log("✅ 地图功能测试成功！");
+                
+            } catch (error) {
+                log(`❌ 地图功能测试失败: ${error.message}`);
+                console.error('测试失败:', error);
+            }
+        }
+
+        // 加载百度地图API
+        function loadBaiduMapAPI(apiKey) {
+            return new Promise((resolve, reject) => {
+                if (typeof BMap !== 'undefined') {
+                    log("✅ 百度地图API已加载");
+                    resolve();
+                    return;
+                }
+
+                log("🚀 开始加载百度地图API...");
+                
+                const script = document.createElement('script');
+                script.src = `https://api.map.baidu.com/api?v=3.0&ak=${apiKey}&callback=baiduMapInitCallback`;
+                script.async = true;
+                
+                window.baiduMapInitCallback = () => {
+                    log("✅ 百度地图API加载成功");
+                    resolve();
+                };
+                
+                script.onerror = () => {
+                    log("❌ 百度地图API加载失败");
+                    reject(new Error('百度地图API加载失败'));
+                };
+                
+                document.head.appendChild(script);
+                
+                setTimeout(() => {
+                    if (typeof BMap === 'undefined') {
+                        log("❌ 百度地图API加载超时");
+                        reject(new Error('百度地图API加载超时'));
+                    }
+                }, 10000);
+            });
+        }
+
+        // 初始化地图
+        function initMap() {
+            return new Promise((resolve, reject) => {
+                try {
+                    const mapContainer = document.getElementById('map-container');
+                    if (!mapContainer) {
+                        throw new Error('未找到地图容器');
+                    }
+                    
+                    const map = new BMap.Map('map-container');
+                    const point = new BMap.Point(116.404, 39.915); // 北京中心
+                    map.centerAndZoom(point, 12);
+                    map.enableScrollWheelZoom(true);
+                    
+                    // 添加控件
+                    map.addControl(new BMap.NavigationControl());
+                    map.addControl(new BMap.ScaleControl());
+                    map.addControl(new BMap.OverviewMapControl());
+                    
+                    log("✅ 地图初始化成功");
+                    resolve(map);
+                    
+                } catch (error) {
+                    log(`❌ 地图初始化失败: ${error.message}`);
+                    reject(error);
+                }
+            });
+        }
+
+        // 显示旅行信息
+        async function showTripOnMap(map, trip) {
+            log("🗺️ 开始显示旅行信息...");
+            
+            // 清除旧标记
+            map.clearOverlays();
+            
+            const points = [];
+            
+            try {
+                // 显示目的地
+                if (trip.destination) {
+                    log(`📍 处理目的地: ${trip.destination}`);
+                    const destinationPoint = await geocodeAddress(trip.destination);
+                    if (destinationPoint) {
+                        points.push(destinationPoint);
+                        addMarker(map, destinationPoint, trip.destination, '目的地');
+                        log("✅ 目的地标记添加成功");
+                    }
+                }
+                
+                // 显示行程地点
+                if (trip.itinerary && trip.itinerary.length > 0) {
+                    log(`🗺️ 处理行程地点，数量: ${trip.itinerary.length}`);
+                    
+                    for (const [index, item] of trip.itinerary.entries()) {
+                        if (item.location) {
+                            try {
+                                log(`📍 处理行程地点 ${index + 1}: ${item.title} (${item.location})`);
+                                const locationPoint = await geocodeAddress(item.location);
+                                if (locationPoint) {
+                                    points.push(locationPoint);
+                                    addNumberedMarker(map, locationPoint, item, index + 1);
+                                    log(`✅ 行程地点标记添加成功: ${item.title}`);
+                                }
+                            } catch (error) {
+                                log(`❌ 无法解析行程地点: ${item.location}`);
+                            }
+                        }
+                    }
+                }
+                
+                // 调整地图视野
+                if (points.length > 0) {
+                    const viewport = map.getViewport(points);
+                    let zoomLevel = viewport.zoom;
+                    if (points.length === 1) zoomLevel = 14;
+                    else if (points.length <= 3) zoomLevel = 12;
+                    
+                    map.centerAndZoom(viewport.center, zoomLevel);
+                    log("✅ 地图视野调整完成");
+                }
+                
+            } catch (error) {
+                log(`❌ 显示旅行地图失败: ${error.message}`);
+                throw error;
+            }
+        }
+
+        // 地理编码
+        function geocodeAddress(address) {
+            return new Promise((resolve, reject) => {
+                const geocoder = new BMap.Geocoder();
+                geocoder.getPoint(address, (point) => {
+                    if (point) {
+                        log(`✅ 地理编码成功: ${address} -> (${point.lng}, ${point.lat})`);
+                        resolve(point);
+                    } else {
+                        log(`❌ 地理编码失败: ${address}`);
+                        reject(new Error(`地址解析失败: ${address}`));
+                    }
+                });
+            });
+        }
+
+        // 添加标记
+        function addMarker(map, point, title, type) {
+            const marker = new BMap.Marker(point);
+            
+            const infoWindow = new BMap.InfoWindow(
+                `<div style="padding:10px;">
+                    <strong>${type}: ${title}</strong>
+                </div>`,
+                { width: 200, height: 50 }
+            );
+
+            marker.addEventListener('click', () => {
+                map.openInfoWindow(infoWindow, point);
+            });
+
+            map.addOverlay(marker);
+            return marker;
+        }
+
+        // 添加带编号的标记
+        function addNumberedMarker(map, point, item, index) {
+            // 创建自定义标签
+            const label = new BMap.Label(`${index}`, {
+                offset: new BMap.Size(-6, -20)
+            });
+            label.setStyle({
+                backgroundColor: '#4A90E2',
+                color: 'white',
+                border: '2px solid white',
+                borderRadius: '50%',
+                width: '20px',
+                height: '20px',
+                lineHeight: '20px',
+                textAlign: 'center',
+                fontSize: '12px',
+                fontWeight: 'bold'
+            });
+            
+            const marker = new BMap.Marker(point);
+            marker.setLabel(label);
+            
+            const infoWindow = new BMap.InfoWindow(
+                `<div style="padding:10px;">
+                    <strong>${index}. ${item.title}</strong><br>
+                    <small>${item.location}</small>
+                    ${item.time ? `<br><small>时间: ${item.time}</small>` : ''}
+                </div>`,
+                { width: 200, height: 'auto' }
+            );
+            
+            marker.addEventListener('click', () => {
+                map.openInfoWindow(infoWindow, point);
+            });
+            
+            map.addOverlay(marker);
+            return marker;
+        }
+
+        // 清除地图
+        function clearMap() {
+            const mapContainer = document.getElementById('map-container');
+            if (mapContainer) {
+                mapContainer.innerHTML = '';
+                log("🗺️ 地图已清除");
+            }
+        }
+
+        // 页面加载时检查API Key
+        window.addEventListener('load', () => {
+            const apiKeys = localStorage.getItem('webplanner_api_keys');
+            if (apiKeys) {
+                const parsedKeys = JSON.parse(apiKeys);
+                if (parsedKeys.baiduApiKey) {
+                    log("✅ 检测到已配置的API Key");
+                } else {
+                    log("⚠️ 未检测到百度地图API Key");
+                }
+            } else {
+                log("⚠️ 未检测到API Key配置");
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图修复测试 - 简化版本</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f8f9fa;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            color: #0c5460;
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+        #map-container {
+            width: 100%;
+            height: 500px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .itinerary-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .itinerary-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ 地图修复测试 - 简化版本</h1>
+        
+        <div class="test-section">
+            <h3>测试说明</h3>
+            <p>这个页面测试修复后的地图服务，主要验证：</p>
+            <ul>
+                <li>✅ 地理编码功能正常</li>
+                <li>✅ 南京地点不会重合</li>
+                <li>✅ 标记显示正确</li>
+                <li>✅ 批量标记功能正常</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>测试行程数据（南京）</h3>
+            <div class="itinerary-list">
+                <div class="itinerary-item">
+                    <h4>南京南站</h4>
+                    <p><strong>地点:</strong> 南京南站</p>
+                </div>
+                <div class="itinerary-item">
+                    <h4>夫子庙</h4>
+                    <p><strong>地点:</strong> 夫子庙</p>
+                </div>
+                <div class="itinerary-item">
+                    <h4>中山陵</h4>
+                    <p><strong>地点:</strong> 中山陵</p>
+                </div>
+                <div class="itinerary-item">
+                    <h4>新街口</h4>
+                    <p><strong>地点:</strong> 新街口</p>
+                </div>
+                <div class="itinerary-item">
+                    <h4>明孝陵</h4>
+                    <p><strong>地点:</strong> 明孝陵</p>
+                </div>
+                <div class="itinerary-item">
+                    <h4>玄武湖</h4>
+                    <p><strong>地点:</strong> 玄武湖</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>测试操作</h3>
+            <button class="test-button" onclick="testNanjingMarkers()">测试南京标记</button>
+            <button class="test-button" onclick="testBeijingMarkers()">测试北京标记</button>
+            <button class="test-button" onclick="testSingleLocation()">测试单个地点</button>
+            <button class="test-button" onclick="clearMap()">清除地图</button>
+        </div>
+
+        <div id="map-container">
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f5f5f5; color: #666;">
+                <div style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🗺️</div>
+                    <p>点击上方按钮测试地图功能</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="test-section">
+            <h3>测试结果</h3>
+            <div id="result-content"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        let mapService = null;
+
+        // 南京行程数据
+        const nanjingItinerary = [
+            {
+                title: '南京南站',
+                location: '南京南站',
+                time: '09:00',
+                duration: 60,
+                cost: 0
+            },
+            {
+                title: '夫子庙',
+                location: '夫子庙',
+                time: '11:00',
+                duration: 120,
+                cost: 60
+            },
+            {
+                title: '中山陵',
+                location: '中山陵',
+                time: '14:00',
+                duration: 180,
+                cost: 0
+            },
+            {
+                title: '新街口',
+                location: '新街口',
+                time: '17:00',
+                duration: 90,
+                cost: 200
+            },
+            {
+                title: '明孝陵',
+                location: '明孝陵',
+                time: '09:00',
+                duration: 120,
+                cost: 70
+            },
+            {
+                title: '玄武湖',
+                location: '玄武湖',
+                time: '14:00',
+                duration: 120,
+                cost: 0
+            }
+        ];
+
+        // 北京行程数据
+        const beijingItinerary = [
+            {
+                title: '天安门',
+                location: '天安门',
+                time: '09:00',
+                duration: 120,
+                cost: 0
+            },
+            {
+                title: '故宫',
+                location: '故宫',
+                time: '11:00',
+                duration: 180,
+                cost: 60
+            },
+            {
+                title: '颐和园',
+                location: '颐和园',
+                time: '14:00',
+                duration: 180,
+                cost: 30
+            }
+        ];
+
+        // 初始化地图服务
+        async function initMapService() {
+            if (!mapService) {
+                // 动态导入地图服务
+                const module = await import('./src/services/mapService.js');
+                mapService = module.mapService;
+            }
+            return mapService;
+        }
+
+        // 测试南京标记
+        async function testNanjingMarkers() {
+            const service = await initMapService();
+            const resultDiv = document.getElementById('result-content');
+            
+            try {
+                resultDiv.innerHTML = '<div class="info">🗺️ 开始测试南京标记...</div>';
+                
+                // 初始化地图
+                await service.initMap('map-container');
+                
+                // 添加南京标记
+                const markers = await service.addItineraryMarkers(nanjingItinerary);
+                
+                // 显示结果
+                const result = `
+                    <div class="success">
+                        <strong>✅ 南京标记测试成功!</strong><br>
+                        成功添加标记: ${markers.length}/${nanjingItinerary.length} 个<br>
+                        检查地图上南京的各个地点是否分散显示，没有重合
+                    </div>
+                `;
+                resultDiv.innerHTML += result;
+                
+            } catch (error) {
+                resultDiv.innerHTML += `<div class="error">❌ 南京标记测试失败: ${error.message}</div>`;
+            }
+        }
+
+        // 测试北京标记
+        async function testBeijingMarkers() {
+            const service = await initMapService();
+            const resultDiv = document.getElementById('result-content');
+            
+            try {
+                resultDiv.innerHTML = '<div class="info">🗺️ 开始测试北京标记...</div>';
+                
+                // 初始化地图
+                await service.initMap('map-container');
+                
+                // 添加北京标记
+                const markers = await service.addItineraryMarkers(beijingItinerary);
+                
+                // 显示结果
+                const result = `
+                    <div class="success">
+                        <strong>✅ 北京标记测试成功!</strong><br>
+                        成功添加标记: ${markers.length}/${beijingItinerary.length} 个<br>
+                        检查地图上北京的各个地点是否分散显示
+                    </div>
+                `;
+                resultDiv.innerHTML += result;
+                
+            } catch (error) {
+                resultDiv.innerHTML += `<div class="error">❌ 北京标记测试失败: ${error.message}</div>`;
+            }
+        }
+
+        // 测试单个地点
+        async function testSingleLocation() {
+            const service = await initMapService();
+            const resultDiv = document.getElementById('result-content');
+            
+            try {
+                resultDiv.innerHTML = '<div class="info">🗺️ 开始测试单个地点...</div>';
+                
+                // 初始化地图
+                await service.initMap('map-container');
+                
+                // 显示单个地点
+                await service.showDestinationOnMap('南京南站');
+                
+                // 显示结果
+                const result = `
+                    <div class="success">
+                        <strong>✅ 单个地点测试成功!</strong><br>
+                        地图应该显示南京南站的位置<br>
+                        标记应该带有编号和信息窗口
+                    </div>
+                `;
+                resultDiv.innerHTML += result;
+                
+            } catch (error) {
+                resultDiv.innerHTML += `<div class="error">❌ 单个地点测试失败: ${error.message}</div>`;
+            }
+        }
+
+        // 清除地图
+        function clearMap() {
+            if (mapService) {
+                mapService.clearMarkers();
+            }
+            const mapContainer = document.getElementById('map-container');
+            mapContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f5f5f5; color: #666;"><div style="text-align: center;"><div style="font-size: 48px; margin-bottom: 10px;">🗺️</div><p>点击上方按钮测试地图功能</p></div></div>';
+            document.getElementById('result-content').innerHTML = '';
+        }
+
+        // 页面加载时检查API Key
+        window.addEventListener('load', function() {
+            const apiKeys = localStorage.getItem('webplanner_api_keys');
+            if (!apiKeys || !JSON.parse(apiKeys).baiduApiKey) {
+                document.getElementById('result-content').innerHTML = `
+                    <div class="error">
+                        <strong>❌ 未配置百度地图API Key</strong><br>
+                        请在设置中配置百度地图API Key才能测试地图功能
+                    </div>
+                `;
+            } else {
+                document.getElementById('result-content').innerHTML = `
+                    <div class="success">
+                        <strong>✅ API Key已配置</strong><br>
+                        可以开始测试地图功能
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
