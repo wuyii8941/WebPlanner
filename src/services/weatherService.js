@@ -17,7 +17,7 @@ class WeatherService {
       const savedKeys = localStorage.getItem('webplanner_api_keys');
       if (savedKeys) {
         const parsedKeys = JSON.parse(savedKeys);
-        return parsedKeys.weatherApiKey || parsedKeys.amapApiKey || '';
+        return parsedKeys.weatherApiKey || parsedKeys.baiduApiKey || '';
       }
     } catch (error) {
       console.error('获取天气API密钥失败:', error);

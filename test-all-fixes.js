@@ -233,6 +233,16 @@ if (typeof window !== 'undefined') {
       console.log('\n🔧 部分功能需要进一步调试')
     }
   })
+} else {
+  // Node.js 环境直接运行
+  runAllTests().then(success => {
+    if (success) {
+      console.log('\n✨ 所有修复已成功验证！')
+    } else {
+      console.log('\n🔧 部分功能需要进一步调试')
+    }
+    process.exit(success ? 0 : 1)
+  })
 }
 
 // 导出测试函数供其他模块使用

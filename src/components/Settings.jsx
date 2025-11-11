@@ -6,9 +6,7 @@ import { proxyService } from '../services/proxyService'
 const Settings = ({ onBack }) => {
   const navigate = useNavigate()
   const [apiKeys, setApiKeys] = useState({
-    amapApiKey: '',
-    amapSecurityKey1: '',
-    amapSecurityKey2: '',
+    baiduApiKey: '',
     llmApiKey: '',
     xunfeiApiKey: '',
     weatherApiKey: ''
@@ -39,10 +37,14 @@ const Settings = ({ onBack }) => {
     if (savedKeys) {
       try {
         const parsedKeys = JSON.parse(savedKeys)
-        setApiKeys(prev => ({
-          ...prev,
-          ...parsedKeys
-        }))
+        // 兼容旧版本的高德地图API Key
+        const migratedKeys = {
+          baiduApiKey: parsedKeys.baiduApiKey || parsedKeys.amapApiKey || '',
+          llmApiKey: parsedKeys.llmApiKey || '',
+          xunfeiApiKey: parsedKeys.xunfeiApiKey || '',
+          weatherApiKey: parsedKeys.weatherApiKey || ''
+        }
+        setApiKeys(migratedKeys)
       } catch (error) {
         console.error('解析保存的API密钥失败:', error)
       }
@@ -90,13 +92,13 @@ const Settings = ({ onBack }) => {
   const validateApiKeys = () => {
     const newErrors = {}
 
-    // 高德地图API Key验证 - 更宽松的验证
-    if (apiKeys.amapApiKey && apiKeys.amapApiKey.trim()) {
-      const trimmedKey = apiKeys.amapApiKey.trim()
-      if (trimmedKey.length !== 32) {
-        newErrors.amapApiKey = '高德地图API Key应为32位字符'
+    // 百度地图API Key验证 - 更宽松的验证
+    if (apiKeys.baiduApiKey && apiKeys.baiduApiKey.trim()) {
+      const trimmedKey = apiKeys.baiduApiKey.trim()
+      if (trimmedKey.length < 10) {
+        newErrors.baiduApiKey = '百度地图API Key格式不正确，请检查长度'
       } else if (!/^[a-zA-Z0-9]+$/.test(trimmedKey)) {
-        newErrors.amapApiKey = '高德地图API Key应仅包含字母和数字'
+        newErrors.baiduApiKey = '百度地图API Key应仅包含字母和数字'
       }
     }
 
@@ -200,9 +202,7 @@ const Settings = ({ onBack }) => {
     if (window.confirm('确定要清除所有API密钥吗？这将导致相关功能无法使用。')) {
       localStorage.removeItem('webplanner_api_keys')
       setApiKeys({
-        amapApiKey: '',
-        amapSecurityKey1: '',
-        amapSecurityKey2: '',
+        baiduApiKey: '',
         llmApiKey: '',
         xunfeiApiKey: '',
         weatherApiKey: ''
@@ -292,74 +292,38 @@ const Settings = ({ onBack }) => {
           </div>
         )}
 
-        {/* 高德地图API设置 */}
+        {/* 百度地图API设置 */}
         <div className="mb-8">
           <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
             <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
-            高德地图 API
+            百度地图 API
           </h3>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <p className="text-blue-800 text-sm">
               <strong>功能：</strong>地图显示、地理位置服务、路径规划
             </p>
             <p className="text-blue-700 text-sm mt-1">
-              <strong>获取方式：</strong>访问 <a href="https://lbs.amap.com/" target="_blank" rel="noopener noreferrer" className="underline">高德开放平台</a> 注册并创建应用
+              <strong>获取方式：</strong>访问 <a href="https://lbsyun.baidu.com/" target="_blank" rel="noopener noreferrer" className="underline">百度地图开放平台</a> 注册并创建应用
             </p>
           </div>
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
-                高德地图 API Key
+                百度地图 API Key
               </label>
               <input
                 type="password"
-                value={apiKeys.amapApiKey}
-                onChange={(e) => handleInputChange('amapApiKey', e.target.value)}
-                placeholder="请输入32位高德地图API Key"
+                value={apiKeys.baiduApiKey}
+                onChange={(e) => handleInputChange('baiduApiKey', e.target.value)}
+                placeholder="请输入百度地图API Key"
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.amapApiKey ? 'border-red-300' : 'border-gray-300'
+                  errors.baiduApiKey ? 'border-red-300' : 'border-gray-300'
                 }`}
               />
-              {errors.amapApiKey && (
-                <p className="text-red-600 text-sm">{errors.amapApiKey}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                高德地图安全密钥 1
-              </label>
-              <input
-                type="password"
-                value={apiKeys.amapSecurityKey1}
-                onChange={(e) => handleInputChange('amapSecurityKey1', e.target.value)}
-                placeholder="请输入高德地图安全密钥 1"
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.amapSecurityKey1 ? 'border-red-300' : 'border-gray-300'
-                }`}
-              />
-              {errors.amapSecurityKey1 && (
-                <p className="text-red-600 text-sm">{errors.amapSecurityKey1}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                高德地图安全密钥 2
-              </label>
-              <input
-                type="password"
-                value={apiKeys.amapSecurityKey2}
-                onChange={(e) => handleInputChange('amapSecurityKey2', e.target.value)}
-                placeholder="请输入高德地图安全密钥 2"
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.amapSecurityKey2 ? 'border-red-300' : 'border-gray-300'
-                }`}
-              />
-              {errors.amapSecurityKey2 && (
-                <p className="text-red-600 text-sm">{errors.amapSecurityKey2}</p>
+              {errors.baiduApiKey && (
+                <p className="text-red-600 text-sm">{errors.baiduApiKey}</p>
               )}
             </div>
           </div>
@@ -556,7 +520,7 @@ const Settings = ({ onBack }) => {
               <strong>功能：</strong>实时天气查询、旅行目的地天气信息
             </p>
             <p className="text-cyan-700 text-sm mt-1">
-              <strong>获取方式：</strong>使用高德地图API Key即可，无需额外申请
+              <strong>获取方式：</strong>使用百度地图API Key即可，无需额外申请
             </p>
           </div>
           <div className="space-y-2">
@@ -567,7 +531,7 @@ const Settings = ({ onBack }) => {
               type="password"
               value={apiKeys.weatherApiKey}
               onChange={(e) => handleInputChange('weatherApiKey', e.target.value)}
-              placeholder="请输入天气服务API Key（与高德地图API Key相同）"
+              placeholder="请输入天气服务API Key（与百度地图API Key相同）"
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
                 errors.weatherApiKey ? 'border-red-300' : 'border-gray-300'
               }`}

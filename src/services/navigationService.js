@@ -1,4 +1,4 @@
-// 导航服务 - 基于高德地图的路径规划和导航功能
+// 导航服务 - 基于百度地图的路径规划和导航功能
 export class NavigationService {
   constructor() {
     this.driving = null
@@ -11,167 +11,119 @@ export class NavigationService {
   getApiKey() {
     const apiKeys = localStorage.getItem('webplanner_api_keys')
     if (!apiKeys) {
-      throw new Error('请先在设置中配置高德地图API Key')
+      throw new Error('请先在设置中配置百度地图API Key')
     }
     
     const parsedKeys = JSON.parse(apiKeys)
-    if (!parsedKeys.amapApiKey) {
-      throw new Error('请先在设置中配置高德地图API Key')
+    if (!parsedKeys.baiduApiKey) {
+      throw new Error('请先在设置中配置百度地图API Key')
     }
     
-    return parsedKeys.amapApiKey
+    return parsedKeys.baiduApiKey
   }
 
-  // 加载导航插件 - 完整版本，确保所有导航插件正确加载
-  async loadNavigationPlugins() {
+  // 加载百度地图API
+  async loadMapAPI() {
     if (this.isLoaded) {
-      console.log('✅ 导航插件已加载，跳过重复加载')
+      console.log('✅ 百度地图API已加载，跳过重复加载')
       return true
     }
 
-    const apiKey = this.getApiKey()
-    
     return new Promise((resolve, reject) => {
-      console.group('🗺️ 导航服务 - 插件加载')
+      const apiKey = this.getApiKey()
+      console.group('🗺️ 百度地图服务 - API加载')
       console.log('🔑 API Key状态:', apiKey ? `${apiKey.substring(0, 8)}...` : '未配置')
       
-      // 检查是否已经加载了所有必需的插件
-      if (window.AMap && AMap.Driving && AMap.Transit && AMap.Walking) {
+      // 检查是否已经加载了百度地图API
+      if (window.BMap && window.BMap.DrivingRoute) {
+        console.log('✅ 百度地图API已存在，直接使用')
         this.isLoaded = true
-        console.log('✅ 导航插件已存在，直接使用')
         console.groupEnd()
         resolve(true)
         return
       }
-
-      console.log('🚀 开始加载导航插件...')
       
-      // 如果基础API已加载但导航插件缺失，加载导航插件
-      if (window.AMap) {
-        console.log('✅ 基础地图API已加载，开始加载导航插件')
-        this.loadNavigationPluginsOnly(apiKey)
-          .then(() => {
-            this.isLoaded = true
-            console.log('✅ 导航插件加载完成')
-            console.groupEnd()
-            resolve(true)
-          })
-          .catch((error) => {
-            console.error('❌ 导航插件加载失败:', error)
-            console.groupEnd()
-            reject(error)
-          })
-        return
-      }
-
-      // 如果基础API都没加载，先加载基础API和导航插件
-      console.log('🔄 加载基础地图API和导航插件...')
+      console.log('🚀 开始加载百度地图API...')
+      console.log('🌐 API URL:', `https://api.map.baidu.com/api?v=3.0&ak=${apiKey}`)
+      
       const script = document.createElement('script')
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Driving,AMap.Transit,AMap.Walking`
+      script.src = `https://api.map.baidu.com/api?v=3.0&ak=${apiKey}&callback=baiduNavigationInitCallback`
       script.async = true
       
-      script.onload = () => {
-        console.log('✅ 基础地图API和导航插件加载成功')
-        
-        // 等待插件完全初始化
-        setTimeout(() => {
-          this.isLoaded = true
-          console.log('✅ 导航插件初始化完成')
-          console.groupEnd()
-          resolve(true)
-        }, 100)
+      // 创建全局回调函数
+      window.baiduNavigationInitCallback = () => {
+        console.log('✅ 百度地图API加载成功')
+        this.isLoaded = true
+        console.groupEnd()
+        resolve(true)
       }
       
       script.onerror = () => {
-        console.error('❌ 基础地图API和导航插件加载失败')
+        console.error('❌ 百度地图API加载失败')
         console.log('💡 可能的原因:')
-        console.log('• API Key无效或过期')
+        console.log('• API Key无效')
         console.log('• 网络连接问题')
         console.log('• 域名未授权')
         console.log('• 防火墙或网络限制')
         console.groupEnd()
-        reject(new Error('基础地图API和导航插件加载失败，请检查API Key和网络连接'))
+        reject(new Error('百度地图API加载失败，请检查API Key和网络连接'))
       }
       
       document.head.appendChild(script)
     })
   }
 
-  // 仅加载导航插件（当基础API已存在时）
-  async loadNavigationPluginsOnly(apiKey) {
-    return new Promise((resolve, reject) => {
-      console.log('🔄 单独加载导航插件...')
-      
-      // 检查是否已经加载了所有导航插件
-      if (AMap.Driving && AMap.Transit && AMap.Walking) {
-        console.log('✅ 导航插件已存在')
-        resolve(true)
-        return
-      }
-
-      const script = document.createElement('script')
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Driving,AMap.Transit,AMap.Walking`
-      script.async = true
-      
-      script.onload = () => {
-        console.log('✅ 导航插件加载成功')
-        resolve(true)
-      }
-      
-      script.onerror = () => {
-        console.error('❌ 导航插件加载失败')
-        reject(new Error('导航插件加载失败'))
-      }
-      
-      document.head.appendChild(script)
-    })
-  }
-
-  // 初始化导航服务 - 完整版本，包含重试机制和降级方案
+  // 初始化导航服务
   async initNavigation(maxRetries = 2) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`🗺️ 导航服务初始化 - 尝试 ${attempt}/${maxRetries}`)
         
-        await this.loadNavigationPlugins()
+        await this.loadMapAPI()
         
-        console.log('✅ 导航插件加载成功，开始创建导航实例')
+        console.log('✅ 百度地图API加载成功，开始创建导航实例')
         
         // 创建导航实例
         let successCount = 0
         
-        if (typeof AMap.Driving === 'function') {
-          console.log('✅ AMap.Driving 可用，创建实例')
-          this.driving = new AMap.Driving({
-            policy: 0, // 默认策略
-            ferry: 1,
-            map: null
+        if (typeof BMap.DrivingRoute === 'function') {
+          console.log('✅ BMap.DrivingRoute 可用，创建实例')
+          this.driving = new BMap.DrivingRoute(window.map || null, {
+            renderOptions: {
+              map: window.map || null,
+              autoViewport: true
+            },
+            policy: 0 // 默认策略
           })
           successCount++
         } else {
-          console.log('⚠️ AMap.Driving 不可用，跳过创建')
+          console.log('⚠️ BMap.DrivingRoute 不可用，跳过创建')
         }
         
-        if (typeof AMap.Transit === 'function') {
-          console.log('✅ AMap.Transit 可用，创建实例')
-          this.transit = new AMap.Transit({
-            policy: 0, // 默认策略
-            city: '全国',
-            map: null
+        if (typeof BMap.TransitRoute === 'function') {
+          console.log('✅ BMap.TransitRoute 可用，创建实例')
+          this.transit = new BMap.TransitRoute(window.map || null, {
+            renderOptions: {
+              map: window.map || null,
+              autoViewport: true
+            }
           })
           successCount++
         } else {
-          console.log('⚠️ AMap.Transit 不可用，跳过创建')
+          console.log('⚠️ BMap.TransitRoute 不可用，跳过创建')
         }
         
-        if (typeof AMap.Walking === 'function') {
-          console.log('✅ AMap.Walking 可用，创建实例')
-          this.walking = new AMap.Walking({
-            map: null
+        if (typeof BMap.WalkingRoute === 'function') {
+          console.log('✅ BMap.WalkingRoute 可用，创建实例')
+          this.walking = new BMap.WalkingRoute(window.map || null, {
+            renderOptions: {
+              map: window.map || null,
+              autoViewport: true
+            }
           })
           successCount++
         } else {
-          console.log('⚠️ AMap.Walking 不可用，跳过创建')
+          console.log('⚠️ BMap.WalkingRoute 不可用，跳过创建')
         }
 
         if (successCount > 0) {
@@ -193,7 +145,7 @@ export class NavigationService {
           console.log('💡 可能的原因:')
           console.log('• API Key 无效或过期')
           console.log('• 网络连接问题')
-          console.log('• 高德地图服务暂时不可用')
+          console.log('• 百度地图服务暂时不可用')
           console.log('• 浏览器安全策略限制')
           // 即使最终失败，也返回true让应用继续运行
           return true
@@ -216,19 +168,25 @@ export class NavigationService {
       }
 
       return new Promise((resolve, reject) => {
-        this.driving.search(
-          start,
-          end,
-          { waypoints: waypoints },
-          (status, result) => {
-            if (status === 'complete' && result.info === 'OK') {
-              resolve(this.formatRouteResult(result, 'driving'))
-            } else {
-              console.warn(`驾车路径规划失败: ${result.info}，返回降级结果`)
-              resolve(this.getFallbackRoute(start, end, 'driving'))
-            }
+        this.driving.search(start, end, {
+          waypoints: waypoints
+        })
+        
+        // 监听搜索结果
+        this.driving.setSearchCompleteCallback((results) => {
+          if (results) {
+            resolve(this.formatRouteResult(results, 'driving'))
+          } else {
+            console.warn('驾车路径规划失败，返回降级结果')
+            resolve(this.getFallbackRoute(start, end, 'driving'))
           }
-        )
+        })
+        
+        // 设置超时
+        setTimeout(() => {
+          console.warn('驾车路径规划超时，返回降级结果')
+          resolve(this.getFallbackRoute(start, end, 'driving'))
+        }, 10000)
       })
     } catch (error) {
       console.warn('驾车路径规划异常，返回降级结果:', error)
@@ -250,18 +208,23 @@ export class NavigationService {
       }
 
       return new Promise((resolve, reject) => {
-        this.transit.search(
-          start,
-          end,
-          (status, result) => {
-            if (status === 'complete' && result.info === 'OK') {
-              resolve(this.formatRouteResult(result, 'transit'))
-            } else {
-              console.warn(`公交路径规划失败: ${result.info}，返回降级结果`)
-              resolve(this.getFallbackRoute(start, end, 'transit'))
-            }
+        this.transit.search(start, end)
+        
+        // 监听搜索结果
+        this.transit.setSearchCompleteCallback((results) => {
+          if (results) {
+            resolve(this.formatRouteResult(results, 'transit'))
+          } else {
+            console.warn('公交路径规划失败，返回降级结果')
+            resolve(this.getFallbackRoute(start, end, 'transit'))
           }
-        )
+        })
+        
+        // 设置超时
+        setTimeout(() => {
+          console.warn('公交路径规划超时，返回降级结果')
+          resolve(this.getFallbackRoute(start, end, 'transit'))
+        }, 10000)
       })
     } catch (error) {
       console.warn('公交路径规划异常，返回降级结果:', error)
@@ -283,18 +246,23 @@ export class NavigationService {
       }
 
       return new Promise((resolve, reject) => {
-        this.walking.search(
-          start,
-          end,
-          (status, result) => {
-            if (status === 'complete' && result.info === 'OK') {
-              resolve(this.formatRouteResult(result, 'walking'))
-            } else {
-              console.warn(`步行路径规划失败: ${result.info}，返回降级结果`)
-              resolve(this.getFallbackRoute(start, end, 'walking'))
-            }
+        this.walking.search(start, end)
+        
+        // 监听搜索结果
+        this.walking.setSearchCompleteCallback((results) => {
+          if (results) {
+            resolve(this.formatRouteResult(results, 'walking'))
+          } else {
+            console.warn('步行路径规划失败，返回降级结果')
+            resolve(this.getFallbackRoute(start, end, 'walking'))
           }
-        )
+        })
+        
+        // 设置超时
+        setTimeout(() => {
+          console.warn('步行路径规划超时，返回降级结果')
+          resolve(this.getFallbackRoute(start, end, 'walking'))
+        }, 10000)
       })
     } catch (error) {
       console.warn('步行路径规划异常，返回降级结果:', error)
@@ -353,124 +321,66 @@ export class NavigationService {
   }
 
   // 格式化路径规划结果
-  formatRouteResult(result, type) {
-    const routes = result.routes || []
+  formatRouteResult(results, type) {
+    const routes = results.getPlan(0) ? [results.getPlan(0)] : []
     
     return routes.map(route => ({
       type: type,
-      distance: route.distance, // 总距离（米）
-      duration: route.duration, // 总时间（秒）
-      tolls: route.tolls || 0, // 过路费
-      toll_distance: route.toll_distance || 0, // 收费路段长度
-      traffic_lights: route.traffic_lights || 0, // 红绿灯数量
-      steps: this.formatSteps(route.steps || [], type),
-      polyline: route.polyline // 路径坐标点
+      distance: route.getDistance(false), // 总距离（米）
+      duration: route.getDuration(false), // 总时间（秒）
+      tolls: route.getToll(false) || 0, // 过路费
+      toll_distance: 0, // 百度地图不提供收费路段长度
+      traffic_lights: 0, // 百度地图不提供红绿灯数量
+      steps: this.formatSteps(route, type),
+      polyline: this.encodePolyline(route) // 路径坐标点
     }))
   }
 
   // 格式化路径步骤
-  formatSteps(steps, type) {
-    return steps.map(step => ({
-      instruction: step.instruction,
-      distance: step.distance,
-      duration: step.duration,
-      action: step.action,
-      assistant_action: step.assistant_action,
-      orientation: step.orientation,
-      road: step.road,
-      polyline: step.polyline,
-      cities: step.cities || []
-    }))
-  }
-
-  // 在地图上显示路径
-  showRouteOnMap(map, route, options = {}) {
-    if (!map || !route) return null
-
-    const { color = '#1890ff', width = 6 } = options
+  formatSteps(route, type) {
+    const steps = []
+    const numSteps = route.getNumRoutes()
     
-    // 清除之前的路径
-    this.clearRouteFromMap(map)
-
-    // 创建路径覆盖物
-    const polyline = new AMap.Polyline({
-      path: this.decodePolyline(route.polyline),
-      strokeColor: color,
-      strokeWeight: width,
-      strokeOpacity: 0.8,
-      strokeStyle: 'solid',
-      map: map
-    })
-
-    // 添加起点和终点标记
-    const startMarker = new AMap.Marker({
-      position: this.decodePolyline(route.polyline)[0],
-      icon: new AMap.Icon({
-        size: new AMap.Size(25, 34),
-        image: 'https://webapi.amap.com/theme/v1.3/markers/n/start.png'
-      }),
-      map: map
-    })
-
-    const endMarker = new AMap.Marker({
-      position: this.decodePolyline(route.polyline)[this.decodePolyline(route.polyline).length - 1],
-      icon: new AMap.Icon({
-        size: new AMap.Size(25, 34),
-        image: 'https://webapi.amap.com/theme/v1.3/markers/n/end.png'
-      }),
-      map: map
-    })
-
-    // 调整地图视野以显示完整路径
-    map.setFitView([polyline, startMarker, endMarker])
-
-    return {
-      polyline,
-      startMarker,
-      endMarker
+    for (let i = 0; i < numSteps; i++) {
+      const step = route.getStep(i)
+      steps.push({
+        instruction: step.getDescription(false),
+        distance: step.getDistance(false),
+        duration: step.getDuration(false),
+        action: this.getActionFromDescription(step.getDescription(false)),
+        assistant_action: '',
+        orientation: '',
+        road: step.getRoad() || '',
+        polyline: '',
+        cities: []
+      })
     }
+    
+    return steps
   }
 
-  // 清除地图上的路径
-  clearRouteFromMap(map) {
-    if (!map) return
-    
-    // 这里需要维护一个路径覆盖物列表来清除
-    // 在实际应用中，应该保存路径覆盖物引用以便清除
+  // 从描述中提取动作
+  getActionFromDescription(description) {
+    if (description.includes('左转')) return '左转'
+    if (description.includes('右转')) return '右转'
+    if (description.includes('直行')) return '直行'
+    if (description.includes('掉头')) return '掉头'
+    return '前往'
   }
 
-  // 解码polyline字符串为坐标数组
-  decodePolyline(polyline) {
-    if (!polyline) return []
-    
+  // 编码polyline为字符串
+  encodePolyline(route) {
+    // 百度地图的路径点编码
     const points = []
-    let index = 0, len = polyline.length
-    let lat = 0, lng = 0
+    const numSteps = route.getNumRoutes()
     
-    while (index < len) {
-      let b, shift = 0, result = 0
-      do {
-        b = polyline.charCodeAt(index++) - 63
-        result |= (b & 0x1f) << shift
-        shift += 5
-      } while (b >= 0x20)
-      let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1))
-      lat += dlat
-      
-      shift = 0
-      result = 0
-      do {
-        b = polyline.charCodeAt(index++) - 63
-        result |= (b & 0x1f) << shift
-        shift += 5
-      } while (b >= 0x20)
-      let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1))
-      lng += dlng
-      
-      points.push([lng * 1e-5, lat * 1e-5])
+    for (let i = 0; i < numSteps; i++) {
+      const step = route.getStep(i)
+      const path = step.getPath()
+      points.push(...path)
     }
     
-    return points
+    return points.map(point => `${point.lng},${point.lat}`).join(';')
   }
 
   // 获取两点间的距离和预计时间
