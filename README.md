@@ -210,6 +210,35 @@ docker rm webplanner-app
 ### 验证部署
 部署完成后，打开浏览器访问 `http://localhost:8080`，应该能看到WebPlanner应用界面。
 
+### 预构建Docker镜像（推荐）
+
+我们已通过GitHub Actions自动构建并推送Docker镜像到阿里云镜像仓库，助教可以直接拉取使用：
+
+```bash
+# 拉取预构建的Docker镜像
+docker pull registry.cn-hangzhou.aliyuncs.com/wuyii8941/WebPlanner:latest
+
+# 运行容器
+docker run -d -p 8080:80 --name webplanner-app registry.cn-hangzhou.aliyuncs.com/wuyii8941/WebPlanner:latest
+```
+
+**镜像信息**:
+- **镜像地址**: `registry.cn-hangzhou.aliyuncs.com/wuyii8941/WebPlanner:latest`
+- **构建状态**: 每次推送到main分支时自动构建
+- **最新版本**: 始终与GitHub仓库main分支同步
+
+### GitHub Actions自动构建
+
+项目配置了GitHub Actions工作流，自动完成以下操作：
+1. 代码推送到main分支时触发构建
+2. 自动构建Docker镜像
+3. 推送到阿里云镜像仓库
+4. 生成多个标签（latest、分支名、commit hash等）
+
+如需配置自己的阿里云镜像仓库，需要在GitHub仓库设置中添加以下Secrets：
+- `ALIYUN_USERNAME`: 阿里云账号用户名
+- `ALIYUN_PASSWORD`: 阿里云账号密码
+
 ## 🔧 项目结构
 
 ```
