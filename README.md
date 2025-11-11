@@ -90,26 +90,34 @@
 5. **访问应用**
    打开浏览器访问 `http://localhost:5173`
 
-## 🔑 API密钥配置
+## 🔑 API密钥配置（重要）
 
 ### 预配置API密钥（供助教测试使用）
 
-以下API密钥已预配置在项目中，保证3个月内可用：
+以下API密钥已预配置在项目中，保证3个月内有效，助教可直接使用：
+
+| API服务 | API密钥 |
+|---------|---------|
+| **百度地图API** | `a5TgeT2IkvMiZO7kyrq2nkT4mlEEtmUp` |
+| **DeepSeek AI API** | `sk-674c20d824f942a59d7cb09426c0d33b` |
+| **科大讯飞API** | `78b46e0bacff3d433ca3fa3e52fc3f56` |
+
+### 详细API密钥信息
 
 #### 百度地图API
-```
-API Key: a5TgeT2IkvMiZO7kyrq2nkT4mlEEtmUp
-```
+- **API Key**: `a5TgeT2IkvMiZO7kyrq2nkT4mlEEtmUp`
+- **用途**: 地图显示、地理编码、路线规划
+- **有效期**: 3个月
 
 #### DeepSeek AI API
-```
-API Key: sk-674c20d824f942a59d7cb09426c0d33b
-```
+- **API Key**: `sk-674c20d824f942a59d7cb09426c0d33b`
+- **用途**: AI行程规划、费用预算分析
+- **有效期**: 3个月
 
 #### 科大讯飞API
-```
-API Key: 78b46e0bacff3d433ca3fa3e52fc3f56
-```
+- **API Key**: `78b46e0bacff3d433ca3fa3e52fc3f56`
+- **用途**: 语音识别（备用方案）
+- **有效期**: 3个月
 
 ### 自定义配置
 如需使用自己的API密钥，可在应用设置页面进行配置：
