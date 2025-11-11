@@ -119,6 +119,40 @@ API Key: 78b46e0bacff3d433ca3fa3e52fc3f56
 
 ## 📦 Docker部署
 
+### 环境要求
+- Docker 20.10+ 或 Docker Desktop
+- 至少 2GB 可用内存
+- 稳定的网络连接
+
+### 安装Docker（如未安装）
+
+#### Windows系统
+1. 下载并安装 [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+2. 启动Docker Desktop
+3. 确保WSL 2后端已启用
+
+#### macOS系统
+1. 下载并安装 [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+2. 启动Docker Desktop
+
+#### Linux系统（Ubuntu/Debian）
+```bash
+# 更新包索引
+sudo apt update
+
+# 安装Docker
+sudo apt install docker.io
+
+# 启动Docker服务
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# 将当前用户添加到docker组（可选）
+sudo usermod -aG docker $USER
+
+# 重新登录或重启生效
+```
+
 ### 使用Docker Compose（推荐）
 
 ```bash
@@ -127,6 +161,9 @@ docker-compose up -d
 
 # 查看服务状态
 docker-compose ps
+
+# 查看服务日志
+docker-compose logs -f
 
 # 停止服务
 docker-compose down
@@ -141,13 +178,29 @@ docker-compose down
 docker build -t webplanner .
 
 # 运行容器
-docker run -p 8080:80 webplanner
+docker run -d -p 8080:80 --name webplanner-app webplanner
+
+# 查看容器状态
+docker ps
+
+# 查看容器日志
+docker logs webplanner-app
+
+# 停止容器
+docker stop webplanner-app
+
+# 删除容器
+docker rm webplanner-app
 ```
 
 ### Docker镜像信息
 - **基础镜像**: nginx:alpine
 - **端口**: 80 (容器内) -> 8080 (主机)
 - **构建命令**: `docker build -t webplanner .`
+- **运行命令**: `docker run -p 8080:80 webplanner`
+
+### 验证部署
+部署完成后，打开浏览器访问 `http://localhost:8080`，应该能看到WebPlanner应用界面。
 
 ## 🔧 项目结构
 
