@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react' // 1. 引入 useRef
 import { Trip, ItineraryItem } from '../models/Trip'
 import { mapService } from '../services/mapService'
-import { navigationService } from '../services/navigationService'
 import { getTripById } from '../services/tripService'
 import WeatherWidget from './WeatherWidget'
 import ExpenseTracker from './ExpenseTracker'
@@ -12,10 +11,11 @@ const TripDetail = ({ trip, onEdit, onDelete, onBack }) => {
   const [activeDay, setActiveDay] = useState(1)
   const [mapInitialized, setMapInitialized] = useState(false)
   const [mapError, setMapError] = useState('')
-  const [showMap, setShowMap] = useState(false)
-  const [navigationAdvice, setNavigationAdvice] = useState([])
-  const [calculatingNavigation, setCalculatingNavigation] = useState(false)
-  const [showNavigation, setShowNavigation] = useState(false)
+  const [mapLoading, setMapLoading] = useState(false)
+  
+  // 创建 Refs 来持有 DOM 元素和地图实例
+  const mapContainerRef = useRef(null) // 持有 DOM 容器
+  const mapInstanceRef = useRef(null)  // 持有地图 API 实例 (e.g., BMap.Map)
 
   // 从数据库重新加载旅行数据
   useEffect(() => {
@@ -91,141 +91,50 @@ const TripDetail = ({ trip, onEdit, onDelete, onBack }) => {
     })
   }
 
-  // 初始化地图
+  // 懒加载地图 - 组件挂载后自动初始化
   useEffect(() => {
-    if (showMap && !mapInitialized && trip.itinerary?.length > 0) {
-      const initMap = async () => {
-        try {
-          await mapService.initMap('map-container')
-          
-          // 智能设置地图中心到目的地
-          if (trip.destination) {
-            await mapService.setMapCenterByDestination(trip.destination)
+    // 检查是否有行程项，如果没有则不显示地图
+    if (!trip.itinerary || trip.itinerary.length === 0) {
+      return
+    }
+
+    // 检查 DOM 元素是否存在，如果不存在则返回
+    if (!mapContainerRef.current) {
+      return
+    }
+    
+    // 检查是否已经初始化，如果已经初始化则返回
+    if (mapInstanceRef.current) {
+      return
+    }
+
+    setMapLoading(true)
+    setMapError('')
+    
+    // 延迟加载地图，避免阻塞页面渲染
+    const timer = setTimeout(() => {
+      mapService.showTripOnMap(trip, mapContainerRef.current) 
+        .then((mapInstance) => {
+          if (!mapInstance) {
+            throw new Error('mapService.showTripOnMap 未返回 map 实例')
           }
           
-          await mapService.addItineraryMarkers(trip.itinerary)
+          mapInstanceRef.current = mapInstance // 保存实例
           setMapInitialized(true)
-          setMapError('')
-        } catch (error) {
+        })
+        .catch((error) => {
           console.error('地图初始化失败:', error)
           setMapError(error.message)
-        }
-      }
-      initMap()
-    }
-  }, [showMap, mapInitialized, trip.itinerary, trip.destination])
+        })
+        .finally(() => {
+          setMapLoading(false)
+        })
+    }, 500) // 延迟500ms加载，确保DOM已渲染
 
-  // 切换地图显示
-  const toggleMap = () => {
-    setShowMap(!showMap)
-    if (!showMap) {
-      setMapInitialized(false)
-    }
-  }
-
-  // 计算导航建议 - 简化版本
-  const calculateNavigationAdvice = async () => {
-    if (!trip.itinerary || trip.itinerary.length < 2) return
-    
-    try {
-      setCalculatingNavigation(true)
-      console.log('🗺️ 开始计算导航建议...')
-      
-      // 简化：先尝试初始化导航服务
-      const navigationInitialized = await navigationService.initNavigation()
-      
-      if (!navigationInitialized) {
-        // 如果导航服务初始化失败，提供模拟数据
-        console.log('⚠️ 导航服务初始化失败，使用模拟数据')
-        const mockAdvice = [
-          {
-            from: '南京站',
-            to: '夫子庙',
-            summary: '从 南京站 到 夫子庙: 8.5公里，约30分钟',
-            details: {
-              distance: 8500,
-              duration: 1800,
-              tolls: 0
-            }
-          },
-          {
-            from: '夫子庙',
-            to: '中山陵',
-            summary: '从 夫子庙 到 中山陵: 12.0公里，约40分钟',
-            details: {
-              distance: 12000,
-              duration: 2400,
-              tolls: 0
-            }
-          }
-        ]
-        setNavigationAdvice(mockAdvice)
-        setShowNavigation(true)
-        console.log('✅ 使用模拟导航建议完成')
-        return
-      }
-      
-      // 如果导航服务可用，尝试计算真实距离
-      try {
-        const distances = await navigationService.calculateItineraryDistances(trip.itinerary)
-        const advice = navigationService.generateNavigationAdvice(distances)
-        setNavigationAdvice(advice)
-        setShowNavigation(true)
-        console.log('✅ 导航建议计算完成:', advice)
-      } catch (routeError) {
-        console.warn('⚠️ 路径规划计算失败，使用模拟数据:', routeError)
-        // 路径规划失败时使用模拟数据
-        const mockAdvice = trip.itinerary.slice(0, -1).map((item, index) => ({
-          from: item.title,
-          to: trip.itinerary[index + 1].title,
-          summary: `从 ${item.title} 到 ${trip.itinerary[index + 1].title}: 约10公里，约25分钟`,
-          details: {
-            distance: 10000,
-            duration: 1500,
-            tolls: 0
-          }
-        }))
-        setNavigationAdvice(mockAdvice)
-        setShowNavigation(true)
-      }
-    } catch (error) {
-      console.error('❌ 计算导航建议失败:', error)
-      
-      // 提供友好的错误提示
-      setNavigationAdvice([{
-        from: '系统提示',
-        to: '导航功能',
-        summary: '导航功能暂时不可用，地图显示功能正常',
-        details: {
-          error: '导航插件加载中，请稍后重试'
-        }
-      }])
-      setShowNavigation(true)
-    } finally {
-      setCalculatingNavigation(false)
-    }
-  }
-
-  // 切换导航显示
-  const toggleNavigation = () => {
-    if (!showNavigation && navigationAdvice.length === 0) {
-      calculateNavigationAdvice()
-    } else {
-      setShowNavigation(!showNavigation)
-    }
-  }
-
-  // 组件卸载时清理地图和导航
-  useEffect(() => {
     return () => {
-      if (mapService) {
-        mapService.destroy()
-      }
-      if (navigationService) {
-        navigationService.destroy()
-      }
+      clearTimeout(timer)
     }
-  }, [])
+  }, [trip]) // 只在 trip 变化时重新初始化
 
   return (
     <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm">
@@ -255,40 +164,6 @@ const TripDetail = ({ trip, onEdit, onDelete, onBack }) => {
           </div>
         </div>
 
-        {/* 地图和导航按钮 */}
-        {trip.itinerary?.length > 0 && (
-          <div className="mt-6 flex justify-center space-x-4">
-            <button
-              onClick={toggleMap}
-              className="px-6 py-3 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center space-x-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              <span>{showMap ? '隐藏地图' : '查看地图'}</span>
-            </button>
-            
-            <button
-              onClick={toggleNavigation}
-              disabled={calculatingNavigation}
-              className="px-6 py-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {calculatingNavigation ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>计算中...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  <span>{showNavigation ? '隐藏导航' : '路径规划'}</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
 
         {/* 旅行信息概览 */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
@@ -346,14 +221,14 @@ const TripDetail = ({ trip, onEdit, onDelete, onBack }) => {
                 <li>• 点击"刷新天气"获取最新天气数据</li>
               </ul>
               <div className="mt-4 text-xs text-cyan-600">
-                <p>天气数据由高德地图提供</p>
+                <p>天气数据由百度地图提供</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 地图显示区域 */}
-        {showMap && (
+        {/* 地图显示区域 - 始终显示（如果有行程项） */}
+        {trip.itinerary && trip.itinerary.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">行程地图</h3>
             {mapError ? (
@@ -368,7 +243,8 @@ const TripDetail = ({ trip, onEdit, onDelete, onBack }) => {
             ) : (
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div 
-                  id="map-container" 
+                  ref={mapContainerRef}
+                  id="map-container"
                   className="w-full h-96 bg-gray-100"
                 >
                   {!mapInitialized && (
@@ -390,70 +266,6 @@ const TripDetail = ({ trip, onEdit, onDelete, onBack }) => {
           </div>
         )}
 
-        {/* 导航建议 */}
-        {showNavigation && (
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">路径规划建议</h3>
-            {navigationAdvice.length > 0 ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center mb-4">
-                  <svg className="w-6 h-6 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  <h4 className="text-lg font-semibold text-green-800">行程导航建议</h4>
-                </div>
-                <div className="space-y-3">
-                  {navigationAdvice.map((advice, index) => (
-                    <div key={index} className="bg-white rounded-lg p-3 border border-green-100">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="text-green-700 font-medium">{advice.summary}</p>
-                          <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-green-600">
-                            <div className="flex items-center">
-                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                              </svg>
-                              <span>距离: {(advice.details.distance / 1000).toFixed(1)}公里</span>
-                            </div>
-                            <div className="flex items-center">
-                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <span>时间: {Math.ceil(advice.details.duration / 60)}分钟</span>
-                            </div>
-                          </div>
-                          {advice.details.tolls > 0 && (
-                            <div className="mt-1 text-sm text-orange-600">
-                              <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                              </svg>
-                              过路费: ¥{advice.details.tolls}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 text-sm text-green-700">
-                  <p>💡 提示: 这些是基于驾车路线的预估时间和距离，实际时间可能因交通状况而有所不同。</p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <span className="text-yellow-800">无法计算导航建议</span>
-                </div>
-                <p className="text-sm text-yellow-700 mt-2">
-                  可能的原因：地址解析失败、网络连接问题或行程项数量不足。
-                </p>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* 费用概览 */}
         {totalCost > 0 && (

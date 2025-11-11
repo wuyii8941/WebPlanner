@@ -1,420 +1,331 @@
-// 高德地图服务
+// ===========================
+// 百度地图服务(简化版)
+// ===========================
+
 export class MapService {
   constructor() {
     this.map = null
-    this.geocoder = null
     this.markers = []
-    this.isLoaded = false
+    this.isMapInitialized = false
   }
 
   // 获取API Key
   getApiKey() {
     const apiKeys = localStorage.getItem('webplanner_api_keys')
     if (!apiKeys) {
-      throw new Error('请先在设置中配置高德地图API Key')
+      throw new Error('请先在设置中配置百度地图API Key')
     }
     
     const parsedKeys = JSON.parse(apiKeys)
-    if (!parsedKeys.amapApiKey) {
-      throw new Error('请先在设置中配置高德地图API Key')
+    if (!parsedKeys.baiduApiKey) {
+      throw new Error('请先在设置中配置百度地图API Key')
     }
     
-    return parsedKeys.amapApiKey
+    return parsedKeys.baiduApiKey
   }
 
-  // 获取安全密钥
-  getSecurityKeys() {
-    const apiKeys = localStorage.getItem('webplanner_api_keys')
-    if (!apiKeys) {
-      return null
-    }
-    
-    const parsedKeys = JSON.parse(apiKeys)
-    const securityKeys = []
-    
-    if (parsedKeys.amapSecurityKey1) {
-      securityKeys.push(parsedKeys.amapSecurityKey1)
-    }
-    if (parsedKeys.amapSecurityKey2) {
-      securityKeys.push(parsedKeys.amapSecurityKey2)
-    }
-    
-    return securityKeys.length > 0 ? securityKeys : null
+  // 检查百度地图API是否加载
+  isBMapLoaded() {
+    return typeof BMap !== 'undefined' && BMap.Map
   }
 
   // 加载地图API
   async loadMapAPI() {
-    console.group('🗺️ 地图服务 - API加载')
-    console.log('🔑 API Key状态:', this.getApiKey() ? '已配置' : '未配置')
-    
-    if (this.isLoaded) {
-      console.log('✅ 地图API已加载，跳过重复加载')
-      console.groupEnd()
+    if (this.isBMapLoaded()) {
       return true
     }
 
     return new Promise((resolve, reject) => {
       const apiKey = this.getApiKey()
-      console.log('🚀 开始加载高德地图API...')
-      console.log('🌐 API URL:', `https://webapi.amap.com/maps?v=2.0&key=${apiKey}`)
-      
-      // 检查是否已经加载了高德地图API
-      if (window.AMap && window.AMap.Geocoder) {
-        console.log('✅ 高德地图API和Geocoder已存在，直接使用')
-        this.isLoaded = true
-        console.groupEnd()
-        resolve(true)
-        return
-      }
       
       const script = document.createElement('script')
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}`
+      script.src = `https://api.map.baidu.com/api?v=3.0&ak=${apiKey}&callback=baiduMapInitCallback`
       script.async = true
       
-      script.onload = () => {
-        console.log('✅ 高德地图API加载成功')
-        
-        // 检查Geocoder插件是否可用
-        if (typeof AMap.Geocoder === 'function') {
-          this.isLoaded = true
-          console.log('✅ AMap.Geocoder构造函数可用')
-          console.groupEnd()
-          resolve(true)
-        } else {
-          // 如果Geocoder不可用，加载插件
-          console.log('🔄 Geocoder插件不可用，加载插件...')
-          const geocoderScript = document.createElement('script')
-          geocoderScript.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geocoder`
-          geocoderScript.async = true
-          
-          geocoderScript.onload = () => {
-            this.isLoaded = true
-            console.log('✅ Geocoder插件加载成功')
-            console.groupEnd()
-            resolve(true)
-          }
-          
-          geocoderScript.onerror = () => {
-            console.error('❌ Geocoder插件加载失败')
-            console.groupEnd()
-            reject(new Error('Geocoder插件加载失败'))
-          }
-          
-          document.head.appendChild(geocoderScript)
-        }
+      // 创建全局回调函数
+      window.baiduMapInitCallback = () => {
+        resolve(true)
       }
       
       script.onerror = () => {
-        console.error('❌ 高德地图API加载失败')
-        console.log('💡 可能的原因:')
-        console.log('• API Key无效')
-        console.log('• 网络连接问题')
-        console.log('• 域名未授权')
-        console.log('• 防火墙或网络限制')
-        console.groupEnd()
-        reject(new Error('高德地图API加载失败，请检查API Key和网络连接'))
+        reject(new Error('百度地图API加载失败，请检查API Key和网络连接'))
       }
       
       document.head.appendChild(script)
+      
+      // 添加超时检查
+      setTimeout(() => {
+        if (!this.isBMapLoaded()) {
+          reject(new Error('百度地图API加载超时，请检查网络连接'))
+        }
+      }, 10000)
     })
   }
 
-  // 初始化地图
-  async initMap(containerId, center = [116.397428, 39.90923]) {
-    try {
-      await this.loadMapAPI()
-      
-      this.map = new AMap.Map(containerId, {
-        zoom: 11,
-        center: center,
-        viewMode: '3D'
-      })
-
-      this.geocoder = new AMap.Geocoder({
-        city: '全国'
-      })
-
-      return this.map
-    } catch (error) {
-      console.error('地图初始化失败:', error)
-      throw error
-    }
-  }
-
-  // 根据目的地智能设置地图中心
-  async setMapCenterByDestination(destination) {
-    if (!this.map || !destination) return
-    
-    try {
-      console.group('🗺️ 地图服务 - 智能设置地图中心')
-      console.log('📍 目的地:', destination)
-      
-      // 确保地图服务已初始化
-      if (!this.geocoder) {
-        await this.loadMapAPI()
-        if (!this.geocoder) {
-          this.geocoder = new AMap.Geocoder({
-            city: '全国'
-          })
-        }
-      }
-      
-      // 智能提取城市名称
-      let city = this.extractCityFromDestination(destination)
-      console.log('🏙️ 提取的城市:', city)
-      
-      // 设置地理编码器的城市参数
-      if (this.geocoder) {
-        this.geocoder.setCity(city)
-      }
-      
-      // 尝试地理编码
-      const location = await this.geocodeAddress(destination)
-      if (location) {
-        this.map.setCenter([location.lng, location.lat])
-        this.map.setZoom(12) // 设置合适的缩放级别
-        console.log('✅ 地图中心设置成功:', { location, city })
-        console.groupEnd()
-        return location
-      }
-    } catch (error) {
-      console.warn('⚠️ 无法设置地图中心:', error)
-      console.log('🔄 使用备用方案...')
-      
-      // 备用方案：使用知名城市的坐标
-      const fallbackLocation = this.getFallbackLocation(destination)
-      if (fallbackLocation) {
-        this.map.setCenter([fallbackLocation.lng, fallbackLocation.lat])
-        this.map.setZoom(10)
-        console.log('✅ 使用备用位置:', fallbackLocation)
-      } else {
-        // 最终备用：使用默认位置
-        this.map.setCenter([116.397428, 39.90923])
-        this.map.setZoom(10)
-        console.log('✅ 使用默认位置')
-      }
-      console.groupEnd()
-    }
-  }
-
-  // 从目的地中智能提取城市名称
-  extractCityFromDestination(destination) {
-    if (!destination) return '全国'
-    
-    // 常见城市名称映射
-    const cityMap = {
-      '北京': '北京市',
-      '上海': '上海市',
-      '广州': '广州市',
-      '深圳': '深圳市',
-      '杭州': '杭州市',
-      '成都': '成都市',
-      '重庆': '重庆市',
-      '西安': '西安市',
-      '南京': '南京市',
-      '武汉': '武汉市',
-      '天津': '天津市',
-      '苏州': '苏州市',
-      '厦门': '厦门市',
-      '青岛': '青岛市',
-      '大连': '大连市',
-      '长沙': '长沙市',
-      '郑州': '郑州市',
-      '沈阳': '沈阳市',
-      '宁波': '宁波市',
-      '无锡': '无锡市'
-    }
-    
-    // 检查是否直接匹配城市名称
-    for (const [key, value] of Object.entries(cityMap)) {
-      if (destination.includes(key)) {
-        return value
-      }
-    }
-    
-    // 尝试提取城市名称模式
-    const patterns = [
-      /([^省]+市)/,           // 匹配"XX市"
-      /([^省]+区)/,           // 匹配"XX区"
-      /([^省]+县)/,           // 匹配"XX县"
-      /([^省]+自治州)/,       // 匹配"XX自治州"
-      /([^省]+特别行政区)/     // 匹配"XX特别行政区"
-    ]
-    
-    for (const pattern of patterns) {
-      const match = destination.match(pattern)
-      if (match) {
-        return match[0]
-      }
-    }
-    
-    // 如果无法提取，返回"全国"
-    return '全国'
-  }
-
-  // 获取备用位置坐标
-  getFallbackLocation(destination) {
-    const fallbackLocations = {
-      '北京': { lng: 116.397428, lat: 39.90923 },
-      '上海': { lng: 121.473701, lat: 31.230416 },
-      '广州': { lng: 113.264385, lat: 23.129112 },
-      '深圳': { lng: 114.057868, lat: 22.543099 },
-      '杭州': { lng: 120.15507, lat: 30.274085 },
-      '成都': { lng: 104.066541, lat: 30.572269 },
-      '重庆': { lng: 106.551643, lat: 29.562849 },
-      '西安': { lng: 108.940174, lat: 34.341568 },
-      '南京': { lng: 118.796877, lat: 32.060255 },
-      '武汉': { lng: 114.305392, lat: 30.593099 }
-    }
-    
-    for (const [city, location] of Object.entries(fallbackLocations)) {
-      if (destination.includes(city)) {
-        return location
-      }
-    }
-    
-    return null
-  }
-
-  // 地理编码 - 将地址转换为坐标
-  async geocodeAddress(address) {
-    if (!this.geocoder) {
-      throw new Error('地图服务未初始化')
-    }
-
+  // 地理编码 - 直接使用百度地图API
+  async geocodeAddress(address, city = '') {
     return new Promise((resolve, reject) => {
-      this.geocoder.getLocation(address, (status, result) => {
-        if (status === 'complete' && result.geocodes.length > 0) {
-          const location = result.geocodes[0].location
+      const geocoder = new BMap.Geocoder()
+      
+      // 组合完整地址，优先使用城市限定
+      const fullAddress = city ? `${city}${address}` : address
+      
+      geocoder.getPoint(fullAddress, (point) => {
+        if (point) {
           resolve({
-            lng: location.lng,
-            lat: location.lat,
-            address: result.geocodes[0].formattedAddress
+            lng: point.lng,
+            lat: point.lat,
+            address: address,
+            fullAddress: fullAddress
           })
         } else {
           reject(new Error(`地址解析失败: ${address}`))
         }
-      })
+      }, city)
     })
   }
 
+  // 显示目的地和行程地点
+  async showTripOnMap(trip, containerElement = null) {
+    if (!containerElement) {
+      throw new Error('需要提供 DOM 元素。')
+    }
+    
+    try {
+      // 加载百度地图API
+      await this.loadMapAPI()
+      
+      // 创建地图实例 - 使用传入的 DOM 元素
+      const map = new BMap.Map(containerElement)
+      
+      // 提取城市名称用于地理编码限定
+      const city = this.extractCityFromDestination(trip.destination)
+      
+      // 首先尝试定位到目的地
+      let initialPoint = new BMap.Point(104.195397, 35.86166) // 默认兰州
+      let initialZoom = 12
+      
+      if (trip.destination) {
+        try {
+          const destinationLocation = await this.geocodeAddress(trip.destination, city)
+          if (destinationLocation) {
+            initialPoint = new BMap.Point(destinationLocation.lng, destinationLocation.lat)
+            initialZoom = 14 // 目的地定位时放大一些
+          }
+        } catch (error) {
+          // 如果目的地解析失败，使用默认点
+        }
+      }
+      
+      // 设置地图初始中心和缩放级别
+      map.centerAndZoom(initialPoint, initialZoom)
+      
+      // 启用滚轮缩放
+      map.enableScrollWheelZoom(true)
+      
+      // 添加地图控件
+      map.addControl(new BMap.NavigationControl())
+      map.addControl(new BMap.ScaleControl())
+      map.addControl(new BMap.OverviewMapControl())
+      
+      this.map = map
+      this.isMapInitialized = true
+      
+      // 清除旧标记
+      this.clearMarkers()
+      
+      const points = []
+      const markers = []
+      
+      // 1. 添加目的地标记
+      if (trip.destination) {
+        try {
+          const destinationLocation = await this.geocodeAddress(trip.destination, city)
+          if (destinationLocation) {
+            const point = new BMap.Point(destinationLocation.lng, destinationLocation.lat)
+            points.push(point)
+            
+            // 添加目的地标记
+            const marker = this.addMarker(point, trip.destination, '目的地')
+            markers.push(marker)
+          }
+        } catch (error) {
+          // 静默处理目的地解析失败
+        }
+      }
+      
+      // 2. 显示行程地点
+      if (trip.itinerary && trip.itinerary.length > 0) {
+        for (const [index, item] of trip.itinerary.entries()) {
+          if (item.location) {
+            try {
+              const location = await this.geocodeAddress(item.location, city)
+              if (location) {
+                const point = new BMap.Point(location.lng, location.lat)
+                points.push(point)
+                
+                // 添加行程地点标记
+                const marker = this.addNumberedMarker(point, item, index + 1)
+                markers.push(marker)
+              }
+            } catch (error) {
+              // 静默处理行程地点解析失败
+            }
+          }
+        }
+      }
+      
+      // 3. 如果有标记，调整地图视野以显示所有标记
+      if (points.length > 0) {
+        const viewport = map.getViewport(points)
+        
+        // 根据标记数量调整缩放级别
+        let zoomLevel = viewport.zoom
+        if (markers.length === 1) {
+          zoomLevel = 14
+        } else if (markers.length <= 3) {
+          zoomLevel = 12
+        } else if (markers.length > 5) {
+          zoomLevel = 10 // 标记较多时缩小一些
+        }
+        
+        map.centerAndZoom(viewport.center, zoomLevel)
+      }
+      
+      // 返回地图实例
+      return map
+      
+    } catch (error) {
+      throw error
+    }
+  }
+
   // 添加标记
-  addMarker(lnglat, title, content = '') {
+  addMarker(point, title, type = '地点') {
     if (!this.map) return null
 
-    const marker = new AMap.Marker({
-      position: lnglat,
-      title: title,
-      content: content || `<div class="bg-blue-600 text-white px-2 py-1 rounded text-sm">${title}</div>`
-    })
-
-    marker.setMap(this.map)
-    this.markers.push(marker)
+    const marker = new BMap.Marker(point)
 
     // 添加信息窗口
-    if (content) {
-      const infoWindow = new AMap.InfoWindow({
-        content: content,
-        offset: new AMap.Pixel(0, -30)
-      })
+    const infoWindow = new BMap.InfoWindow(
+      `<div style="padding:10px;">
+        <strong>${type}: ${title}</strong>
+      </div>`,
+      {
+        width: 200,
+        height: 50
+      }
+    )
 
-      marker.on('click', () => {
-        infoWindow.open(this.map, marker.getPosition())
-      })
-    }
+    marker.addEventListener('click', () => {
+      this.map.openInfoWindow(infoWindow, point)
+    })
+
+    this.map.addOverlay(marker)
+    this.markers.push(marker)
 
     return marker
   }
 
-  // 批量添加行程标记
-  async addItineraryMarkers(itinerary) {
-    if (!this.map) return
+  // 添加带编号的标记
+  addNumberedMarker(point, item, index) {
+    if (!this.map) return null
 
-    // 清除现有标记
-    this.clearMarkers()
-
-    const markers = []
+    // 创建自定义标签（带数字）
+    const label = new BMap.Label(`${index}`, {
+      offset: new BMap.Size(-6, -20)
+    })
+    label.setStyle({
+      backgroundColor: '#4A90E2',
+      color: 'white',
+      border: '2px solid white',
+      borderRadius: '50%',
+      width: '20px',
+      height: '20px',
+      lineHeight: '20px',
+      textAlign: 'center',
+      fontSize: '12px',
+      fontWeight: 'bold'
+    })
     
-    for (const item of itinerary) {
-      if (item.location) {
-        try {
-          const location = await this.geocodeAddress(item.location)
-          const marker = this.addMarker(
-            [location.lng, location.lat],
-            item.title,
-            this.createMarkerContent(item)
-          )
-          if (marker) markers.push(marker)
-        } catch (error) {
-          console.warn(`无法解析地址: ${item.location}`, error)
-        }
+    // 创建标记
+    const marker = new BMap.Marker(point)
+    marker.setLabel(label)
+    
+    // 添加信息窗口
+    const infoWindow = new BMap.InfoWindow(
+      `<div style="padding:10px;">
+        <strong>${index}. ${item.title}</strong><br>
+        <small>${item.location}</small>
+        ${item.time ? `<br><small>时间: ${item.time}</small>` : ''}
+      </div>`,
+      {
+        width: 200,
+        height: 'auto'
       }
-    }
-
-    // 自动调整地图视野以包含所有标记
-    if (markers.length > 0) {
-      this.map.setFitView()
-    }
-
-    return markers
-  }
-
-  // 创建标记内容
-  createMarkerContent(item) {
-    return `
-      <div class="bg-white rounded-lg shadow-lg p-3 max-w-xs">
-        <div class="font-semibold text-gray-800 mb-2">${item.title}</div>
-        <div class="text-sm text-gray-600 mb-1">
-          <strong>时间:</strong> ${item.time}
-        </div>
-        <div class="text-sm text-gray-600 mb-1">
-          <strong>地点:</strong> ${item.location}
-        </div>
-        ${item.cost > 0 ? `
-          <div class="text-sm text-green-600">
-            <strong>费用:</strong> ¥${item.cost}
-          </div>
-        ` : ''}
-        ${item.description ? `
-          <div class="text-xs text-gray-500 mt-2">
-            ${item.description}
-          </div>
-        ` : ''}
-      </div>
-    `
+    )
+    
+    marker.addEventListener('click', () => {
+      this.map.openInfoWindow(infoWindow, point)
+    })
+    
+    this.map.addOverlay(marker)
+    this.markers.push(marker)
+    
+    return marker
   }
 
   // 清除所有标记
   clearMarkers() {
-    this.markers.forEach(marker => {
-      marker.setMap(null)
-    })
+    if (this.map) {
+      this.markers.forEach(marker => {
+        this.map.removeOverlay(marker)
+      })
+    }
     this.markers = []
-  }
-
-  // 设置地图中心
-  setCenter(lnglat) {
-    if (this.map) {
-      this.map.setCenter(lnglat)
-    }
-  }
-
-  // 设置缩放级别
-  setZoom(zoom) {
-    if (this.map) {
-      this.map.setZoom(zoom)
-    }
   }
 
   // 销毁地图
   destroy() {
-    if (this.map) {
-      this.map.destroy()
+    try {
+      if (this.map) {
+        this.clearMarkers()
+        this.map = null
+        this.isMapInitialized = false
+      }
+    } catch (error) {
       this.map = null
-      this.geocoder = null
-      this.isLoaded = false
-      this.clearMarkers()
+      this.isMapInitialized = false
     }
+  }
+
+  // 从目的地提取城市名称
+  extractCityFromDestination(destination) {
+    if (!destination) return ''
+    
+    // 常见城市名称匹配
+    const cityPatterns = [
+      /(北京市|上海[市]?|天津[市]?|重庆[市]?)/,
+      /(南京[市]?|杭州[市]?|苏州[市]?|无锡[市]?|常州[市]?|镇江[市]?|扬州[市]?|南通[市]?|泰州[市]?|盐城[市]?|淮安[市]?|连云港[市]?|宿迁[市]?|徐州[市]?)/,
+      /(广州[市]?|深圳[市]?|珠海[市]?|汕头[市]?|佛山[市]?|韶关[市]?|湛江[市]?|肇庆[市]?|江门[市]?|茂名[市]?|惠州[市]?|梅州[市]?|汕尾[市]?|河源[市]?|阳江[市]?|清远[市]?|东莞[市]?|中山[市]?|潮州[市]?|揭阳[市]?|云浮[市]?)/,
+      /(成都[市]?|绵阳[市]?|德阳[市]?|南充[市]?|宜宾[市]?|自贡[市]?|乐山[市]?|泸州[市]?|达州[市]?|内江[市]?|遂宁[市]?|攀枝花[市]?|眉山[市]?|广安[市]?|资阳[市]?|雅安[市]?|巴中[市]?)/,
+      /(武汉[市]?|黄石[市]?|十堰[市]?|宜昌[市]?|襄阳[市]?|鄂州[市]?|荆门[市]?|孝感[市]?|荆州[市]?|黄冈[市]?|咸宁[市]?|随州[市]?|恩施[市]?)/,
+      /(西安[市]?|铜川[市]?|宝鸡[市]?|咸阳[市]?|渭南[市]?|延安[市]?|汉中[市]?|榆林[市]?|安康[市]?|商洛[市]?)/,
+      /(沈阳[市]?|大连[市]?|鞍山[市]?|抚顺[市]?|本溪[市]?|丹东[市]?|锦州[市]?|营口[市]?|阜新[市]?|辽阳[市]?|盘锦[市]?|铁岭[市]?|朝阳[市]?|葫芦岛[市]?)/,
+      /(济南[市]?|青岛[市]?|淄博[市]?|枣庄[市]?|东营[市]?|烟台[市]?|潍坊[市]?|济宁[市]?|泰安[市]?|威海[市]?|日照[市]?|临沂[市]?|德州[市]?|聊城[市]?|滨州[市]?|菏泽[市]?)/,
+      /(郑州[市]?|开封[市]?|洛阳[市]?|平顶山[市]?|安阳[市]?|鹤壁[市]?|新乡[市]?|焦作[市]?|濮阳[市]?|许昌[市]?|漯河[市]?|三门峡[市]?|南阳[市]?|商丘[市]?|信阳[市]?|周口[市]?|驻马店[市]?)/,
+      /(长沙[市]?|株洲[市]?|湘潭[市]?|衡阳[市]?|邵阳[市]?|岳阳[市]?|常德[市]?|张家界[市]?|益阳[市]?|郴州[市]?|永州[市]?|怀化[市]?|娄底[市]?|湘西[市]?)/
+    ]
+    
+    for (const pattern of cityPatterns) {
+      const match = destination.match(pattern)
+      if (match) {
+        return match[1]
+      }
+    }
+    
+    // 如果没有匹配到具体城市，返回原目的地
+    return destination
   }
 
   // 验证API Key
@@ -423,7 +334,6 @@ export class MapService {
       await this.loadMapAPI()
       return true
     } catch (error) {
-      console.error('❌ 地图API Key验证失败:', error)
       throw new Error(`地图API Key验证失败: ${error.message}`)
     }
   }
