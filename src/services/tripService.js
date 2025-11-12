@@ -19,8 +19,6 @@ const TRIPS_COLLECTION = 'trips'
 
 // 创建新旅行
 export const createTrip = async (tripData, userId) => {
-  console.group('🚀 TripService - 创建旅行')
-  console.log('📋 输入数据:', { tripData, userId })
   
   try {
     const trip = new Trip({
@@ -29,32 +27,19 @@ export const createTrip = async (tripData, userId) => {
       createdAt: new Date().toISOString()
     })
     
-    console.log('📊 创建的Trip对象:', trip)
-    
     // 验证数据
     const errors = trip.validate()
-    console.log('✅ 数据验证结果:', errors)
     
     if (errors.length > 0) {
-      console.error('❌ 数据验证失败:', errors)
-      console.groupEnd()
       throw new Error(errors.join(', '))
     }
 
     // 计算持续时间
     trip.calculateDuration()
-    console.log('📅 计算后的持续时间:', trip.duration)
 
-    console.log('🔥 开始写入Firestore...')
-    console.log('🗄️ 集合名称:', TRIPS_COLLECTION)
-    console.log('📝 写入数据:', trip.toFirestore())
-    
     const docRef = await addDoc(collection(db, TRIPS_COLLECTION), trip.toFirestore())
-    console.log('✅ Firestore写入成功，文档ID:', docRef.id)
     
     const result = { ...trip, id: docRef.id }
-    console.log('🎉 创建旅行成功:', result)
-    console.groupEnd()
     
     return result
   } catch (error) {

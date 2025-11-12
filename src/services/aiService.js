@@ -35,15 +35,12 @@ export class AIService {
     }
 
     // AI服务始终使用直连模式，不经过代理
-    console.log('🌐 AI服务使用直连模式（不经过代理）')
 
     return config
   }
 
   // 检查网络连接状态 - 简化版本，不进行实际网络测试
   async checkNetworkStatus() {
-    console.log('🔍 检查网络连接状态...')
-    
     // 假设网络连接正常，专注于API调用
     return {
       basicNetwork: true,
@@ -58,12 +55,9 @@ export class AIService {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🔄 第 ${attempt} 次尝试调用API...`)
-        
         // 检查网络状态
         const networkStatus = await this.checkNetworkStatus()
         if (!networkStatus.overall) {
-          console.warn('⚠️ 网络连接不稳定，等待重试...')
           await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
           continue
         }
@@ -78,7 +72,6 @@ export class AIService {
         
         // 如果是网络错误，重试
         if (!response.ok && response.status >= 500) {
-          console.warn(`⚠️ 服务器错误 (${response.status})，准备重试...`)
           lastError = new Error(`服务器错误: ${response.status}`)
           continue
         }
@@ -90,12 +83,9 @@ export class AIService {
         
         // 如果是网络错误或超时，重试
         if (error.name === 'AbortError' || error.message.includes('Failed to fetch')) {
-          console.warn(`⚠️ 网络错误 (${error.message})，准备重试...`)
-          
           if (attempt < maxRetries) {
             // 指数退避策略
             const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000)
-            console.log(`⏳ 等待 ${delay}ms 后重试...`)
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
           }
@@ -112,18 +102,9 @@ export class AIService {
 
   // 调用DeepSeek API生成行程（带重试机制）
   async generateItinerary(tripData) {
-    console.group('🤖 AI服务 - 行程生成接口调用')
-    console.log('📋 请求参数:', tripData)
-    
     try {
       const apiKey = this.getApiKey()
-      console.log('🔑 API Key状态:', apiKey ? '已配置' : '未配置')
-      
       const prompt = this.buildPrompt(tripData)
-      console.log('📝 生成的提示词:', prompt)
-      
-      console.log('🚀 开始调用DeepSeek API...')
-      console.log('🌐 API端点:', `${this.baseURL}/chat/completions`)
       
       const requestBody = {
         model: 'deepseek-chat',
@@ -142,7 +123,6 @@ export class AIService {
       }
 
       const requestConfig = this.getRequestConfig(apiKey, requestBody)
-      console.log('📡 请求配置:', requestConfig)
 
       // 使用智能重试机制调用API
       const response = await this.smartRetryRequest(
@@ -150,16 +130,9 @@ export class AIService {
         requestConfig,
         3 // 重试3次
       )
-
-      console.log('📡 API响应状态:', response.status, response.statusText)
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('❌ API请求失败:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        })
         
         let errorMessage = `API请求失败: ${response.status} - ${errorData.error?.message || response.statusText}`
         
@@ -176,13 +149,7 @@ export class AIService {
       }
 
       const data = await response.json()
-      console.log('✅ API响应数据:', data)
-      
       const itineraryData = this.parseAIResponse(data.choices[0].message.content)
-      console.log('📊 解析后的行程数据:', itineraryData)
-      
-      console.log('🎉 AI行程生成成功!')
-      console.groupEnd()
       
       return {
         success: true,
@@ -190,13 +157,6 @@ export class AIService {
         rawResponse: data
       }
     } catch (error) {
-      console.error('❌ AI行程生成失败:', error)
-      console.log('💡 错误详情:', {
-        message: error.message,
-        stack: error.stack
-      })
-      console.groupEnd()
-      
       // 提供更友好的错误信息
       let userFriendlyError = error.message
       if (error.name === 'AbortError') {
@@ -223,8 +183,6 @@ export class AIService {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🔄 第 ${attempt} 次尝试调用API...`)
-        
         // 添加超时处理
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 60000) // 60秒超时
@@ -235,7 +193,6 @@ export class AIService {
         
         // 如果是网络错误，重试
         if (!response.ok && response.status >= 500) {
-          console.warn(`⚠️ 服务器错误 (${response.status})，准备重试...`)
           lastError = new Error(`服务器错误: ${response.status}`)
           continue
         }
@@ -247,12 +204,9 @@ export class AIService {
         
         // 如果是网络错误或超时，重试
         if (error.name === 'AbortError' || error.message.includes('Failed to fetch')) {
-          console.warn(`⚠️ 网络错误 (${error.message})，准备重试...`)
-          
           if (attempt < maxRetries) {
             // 指数退避策略
             const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000)
-            console.log(`⏳ 等待 ${delay}ms 后重试...`)
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
           }
@@ -319,8 +273,6 @@ export class AIService {
 
   // 解析AI响应
   parseAIResponse(responseText) {
-    console.log('🔍 开始解析AI响应:', responseText)
-    
     try {
       // 尝试从响应中提取JSON
       const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
@@ -330,21 +282,15 @@ export class AIService {
       let jsonStr = responseText
       if (jsonMatch) {
         jsonStr = jsonMatch[1] || jsonMatch[0]
-        console.log('📄 提取的JSON字符串:', jsonStr)
       }
       
       const parsedData = JSON.parse(jsonStr)
-      console.log('✅ JSON解析成功:', parsedData)
       
       // 标准化行程数据格式
       const normalizedData = this.normalizeItineraryData(parsedData)
-      console.log('📊 标准化后的数据:', normalizedData)
       
       return normalizedData
     } catch (error) {
-      console.error('❌ 解析AI响应失败:', error)
-      console.log('💡 尝试生成示例行程作为降级方案')
-      
       // 返回示例行程作为降级方案
       return this.generateSampleItinerary()
     }
@@ -352,11 +298,8 @@ export class AIService {
 
   // 标准化行程数据
   normalizeItineraryData(data) {
-    console.log('🔍 开始标准化行程数据:', data)
-    
     // 处理daily_itinerary结构（新的AI响应格式）
     if (data.daily_itinerary && Array.isArray(data.daily_itinerary)) {
-      console.log('📊 检测到daily_itinerary结构')
       const flattenedItinerary = []
       
       data.daily_itinerary.forEach(dayPlan => {
@@ -381,13 +324,11 @@ export class AIService {
         }
       })
       
-      console.log('✅ 扁平化后的行程数据:', flattenedItinerary)
       return flattenedItinerary
     }
     
     // 处理嵌套的itinerary结构（旧的AI响应格式）
     if (data.itinerary && Array.isArray(data.itinerary)) {
-      console.log('📊 检测到嵌套itinerary结构')
       const flattenedItinerary = []
       
       data.itinerary.forEach(dayPlan => {
@@ -412,7 +353,6 @@ export class AIService {
         }
       })
       
-      console.log('✅ 扁平化后的行程数据:', flattenedItinerary)
       return flattenedItinerary
     }
     
@@ -435,14 +375,12 @@ export class AIService {
       }))
     }
     
-    console.log('⚠️ 无法识别的数据结构，使用示例行程')
+    // 无法识别的数据结构，使用示例行程
     return this.generateSampleItinerary()
   }
 
   // 生成示例行程（降级方案）
   generateSampleItinerary() {
-    console.log('🔄 生成示例行程作为降级方案')
-    
     return [
       {
         id: this.generateId(),
@@ -607,10 +545,7 @@ export class AIService {
   // 验证API Key
   async validateApiKey() {
     try {
-      console.log('🔑 开始验证API Key...')
-      
       const apiKey = this.getApiKey()
-      console.log('🔑 API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : '未配置')
       
       const requestConfig = {
         method: 'GET',
@@ -619,9 +554,6 @@ export class AIService {
         }
       }
       
-      // AI API 验证也使用直连模式，不经过代理
-      console.log('🌐 使用直连模式验证API Key（AI API不经过代理）')
-      
       // 使用重试机制验证API Key
       const response = await this.makeApiRequestWithRetry(
         `${this.baseURL}/models`,
@@ -629,15 +561,8 @@ export class AIService {
         2 // 重试2次
       )
       
-      console.log('📡 API Key验证响应状态:', response.status, response.statusText)
-      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('❌ API Key验证失败:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        })
         
         let errorMessage = `API Key验证失败: ${response.status} - ${errorData.error?.message || response.statusText}`
         
@@ -654,15 +579,12 @@ export class AIService {
       }
       
       const data = await response.json()
-      console.log('✅ API Key验证成功，可用模型:', data.data?.length || 0)
       
       return {
         valid: true,
         models: data.data || []
       }
     } catch (error) {
-      console.error('❌ API Key验证失败:', error)
-      
       // 提供更友好的错误信息
       let userFriendlyError = error.message
       if (error.name === 'AbortError') {
@@ -677,8 +599,6 @@ export class AIService {
 
   // 网络连接诊断
   async diagnoseConnection() {
-    console.group('🔧 AI服务网络连接诊断')
-    
     const results = {
       dnsResolution: false,
       apiEndpointReachable: false,
@@ -689,7 +609,6 @@ export class AIService {
     
     try {
       // 测试1: DNS解析
-      console.log('🔍 测试DNS解析...')
       try {
         // 在浏览器环境中，我们可以通过创建Image对象来测试DNS解析
         await new Promise((resolve, reject) => {
@@ -700,48 +619,37 @@ export class AIService {
           setTimeout(() => reject(new Error('DNS解析超时')), 5000)
         })
         results.dnsResolution = true
-        console.log('✅ DNS解析成功')
       } catch (error) {
-        console.error('❌ DNS解析失败:', error.message)
         results.dnsResolution = false
       }
       
       // 测试2: API端点可达性
-      console.log('🔍 测试API端点可达性...')
       try {
         const response = await fetch(`${this.baseURL}/models`, {
           method: 'HEAD',
           signal: AbortSignal.timeout(10000)
         })
         results.apiEndpointReachable = response.status < 500
-        console.log(`✅ API端点可达性: ${response.status}`)
       } catch (error) {
-        console.error('❌ API端点不可达:', error.message)
         results.apiEndpointReachable = false
       }
       
       // 测试3: SSL连接
-      console.log('🔍 测试SSL连接...')
       try {
         const response = await fetch(`${this.baseURL}/models`, {
           method: 'GET',
           signal: AbortSignal.timeout(10000)
         })
         results.sslConnection = true
-        console.log('✅ SSL连接成功')
       } catch (error) {
-        console.error('❌ SSL连接失败:', error.message)
         results.sslConnection = false
       }
       
       // 测试4: API Key有效性
-      console.log('🔍 测试API Key有效性...')
       try {
         const validationResult = await this.validateApiKey()
         results.apiKeyValid = validationResult.valid
-        console.log('✅ API Key有效')
       } catch (error) {
-        console.error('❌ API Key无效:', error.message)
         results.apiKeyValid = false
       }
       
@@ -756,12 +664,8 @@ export class AIService {
       }
       
     } catch (error) {
-      console.error('❌ 网络诊断失败:', error)
       results.overallStatus = 'error'
     }
-    
-    console.log('📊 诊断结果:', results)
-    console.groupEnd()
     
     return results
   }
