@@ -111,11 +111,10 @@ docker run -d -p 8080:80 --name webplanner-app crpi-qugj9o9vg9ub7qd3.cn-hangzhou
 5. **访问应用**
    打开浏览器访问 `http://localhost:5173`
 
-## 🔑 API密钥配置（重要）
+## 🔑 API密钥配置
 
-### 预配置API密钥（供助教测试使用）
+### 预配置API密钥
 
-以下API密钥已预配置在项目中，保证3个月内有效，助教可直接使用：
 
 | API服务 | API密钥 |
 |---------|---------|
@@ -349,4 +348,3 @@ npm run preview
 
 ---
 
-**注意**: 本项目为课程作业提交，所有API密钥保证在提交后3个月内有效，供助教批改使用。
