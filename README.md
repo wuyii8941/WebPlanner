@@ -60,12 +60,31 @@ GitHub地址：https://github.com/wuyii8941/WebPlanner
 
 ## 🚀 快速开始
 
-### 环境要求
+### Docker部署（推荐）
+
+#### 1. 拉取预构建镜像
+```bash
+# 拉取最新版本的镜像
+docker pull crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest
+```
+
+#### 2. 运行容器
+```bash
+# 运行容器
+docker run -d -p 8080:80 --name webplanner-app crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest
+```
+
+#### 3. 访问应用
+打开浏览器访问 `http://localhost:8080`
+
+### 开发环境部署
+
+#### 环境要求
 - Node.js 16+ 
 - npm 或 yarn
 - 现代浏览器（支持Web Speech API）
 
-### 安装步骤
+#### 安装步骤
 
 1. **克隆项目**
    ```bash
@@ -126,128 +145,6 @@ GitHub地址：https://github.com/wuyii8941/WebPlanner
 1. 注册登录后进入设置页面
 2. 在API配置区域填入相应密钥
 3. 保存设置后即可使用
-
-## 📦 Docker部署
-
-### 环境要求
-- Docker 20.10+ 或 Docker Desktop
-- 至少 2GB 可用内存
-- 稳定的网络连接
-
-### 安装Docker（如未安装）
-
-#### Windows系统
-1. 下载并安装 [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-2. 启动Docker Desktop
-3. 确保WSL 2后端已启用
-
-#### macOS系统
-1. 下载并安装 [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
-2. 启动Docker Desktop
-
-#### Linux系统（Ubuntu/Debian）
-```bash
-# 更新包索引
-sudo apt update
-
-# 安装Docker
-sudo apt install docker.io
-
-# 启动Docker服务
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# 将当前用户添加到docker组（可选）
-sudo usermod -aG docker $USER
-
-# 重新登录或重启生效
-```
-
-### 使用Docker Compose（推荐）
-
-```bash
-# 构建并启动服务
-docker-compose up -d
-
-# 查看服务状态
-docker-compose ps
-
-# 查看服务日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
-```
-
-服务将在 http://localhost:8080 运行
-
-### 手动Docker构建
-
-```bash
-# 构建镜像
-docker build -t webplanner .
-
-# 运行容器
-docker run -d -p 8080:80 --name webplanner-app webplanner
-
-# 查看容器状态
-docker ps
-
-# 查看容器日志
-docker logs webplanner-app
-
-# 停止容器
-docker stop webplanner-app
-
-# 删除容器
-docker rm webplanner-app
-```
-
-### Docker镜像信息
-- **基础镜像**: nginx:alpine
-- **端口**: 80 (容器内) -> 8080 (主机)
-- **构建命令**: `docker build -t webplanner .`
-- **运行命令**: `docker run -p 8080:80 webplanner`
-
-### 验证部署
-部署完成后，打开浏览器访问 `http://localhost:8080`，应该能看到WebPlanner应用界面。
-
-### 预构建Docker镜像（推荐）
-
-我们已通过GitHub Actions自动构建并推送Docker镜像到阿里云镜像仓库，助教可以直接拉取使用：
-
-```bash
-# 拉取预构建的Docker镜像
-docker pull crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest
-
-# 运行容器
-docker run -d -p 8080:80 --name webplanner-app crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest
-```
-
-**镜像信息**:
-- **镜像地址**: `crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest`
-- **构建状态**: 每次推送到main分支时自动构建
-- **最新版本**: 始终与GitHub仓库main分支同步
-
-### 阿里云镜像拉取与配置
-
-#### 1. 登录阿里云 Container Registry
-```bash
-docker login --username=tmt200306 crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com
-```
-用于登录的用户名为阿里云账号全名，密码为开通服务时设置的密码。
-
-#### 2. 拉取镜像并运行
-```bash
-# 拉取最新版本的镜像
-docker pull crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest
-
-# 运行容器
-docker run -d -p 8080:80 --name webplanner-app crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest
-```
-
-#### 3. 验证部署
-部署完成后，打开浏览器访问 `http://localhost:8080`，应该能看到WebPlanner应用界面。
 
 
 ## 🔧 项目结构
