@@ -216,16 +216,65 @@ docker rm webplanner-app
 
 ```bash
 # 拉取预构建的Docker镜像
-docker pull registry.cn-hangzhou.aliyuncs.com/wuyii8941/WebPlanner:latest
+docker pull crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest
 
 # 运行容器
-docker run -d -p 8080:80 --name webplanner-app registry.cn-hangzhou.aliyuncs.com/wuyii8941/WebPlanner:latest
+docker run -d -p 8080:80 --name webplanner-app crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest
 ```
 
 **镜像信息**:
-- **镜像地址**: `registry.cn-hangzhou.aliyuncs.com/wuyii8941/WebPlanner:latest`
+- **镜像地址**: `crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:latest`
 - **构建状态**: 每次推送到main分支时自动构建
 - **最新版本**: 始终与GitHub仓库main分支同步
+
+### 阿里云镜像仓库操作指南
+
+#### 1. 登录阿里云 Container Registry
+```bash
+docker login --username=tmt200306 crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com
+```
+用于登录的用户名为阿里云账号全名，密码为开通服务时设置的密码。
+
+您可以在访问凭证页面修改凭证密码。
+
+注意：使用 RAM 用户（子账号）登录镜像仓库时，不支持企业别名带有英文半角句号（.）。
+
+#### 2. 从Registry中拉取镜像
+```bash
+docker pull crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:[镜像版本号]
+```
+
+#### 3. 将镜像推送到Registry
+```bash
+# 登录镜像仓库
+docker login --username=tmt200306 crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com
+
+# 标记镜像
+docker tag [ImageId] crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:[镜像版本号]
+
+# 推送镜像
+docker push crpi-qugj9o9vg9ub7qd3.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:[镜像版本号]
+```
+请根据实际镜像信息替换示例中的`[ImageId]`和`[镜像版本号]`参数。
+
+#### 4. 选择合适的镜像仓库地址
+从ECS推送镜像时，可以选择使用镜像仓库内网地址。推送速度将得到提升并且将不会损耗您的公网流量。
+
+如果您使用的机器位于VPC网络，请使用 `crpi-qugj9o9vg9ub7qd3-vpc.cn-hangzhou.personal.cr.aliyuncs.com` 作为Registry的域名登录。
+
+#### 5. 示例
+使用"docker tag"命令重命名镜像，并将它通过专有网络地址推送至Registry。
+
+```bash
+# 查看本地镜像
+docker images
+
+# 标记镜像
+docker tag [本地镜像ID] crpi-qugj9o9vg9ub7qd3-vpc.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:[版本号]
+
+# 推送镜像
+docker push crpi-qugj9o9vg9ub7qd3-vpc.cn-hangzhou.personal.cr.aliyuncs.com/wuyii8941/webplanner:[版本号]
+```
 
 ### GitHub Actions自动构建
 
